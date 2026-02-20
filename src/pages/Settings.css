@@ -1,0 +1,66 @@
+.settings-page {
+  max-width: 700px;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.settings-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.positions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.position-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.add-position-form {
+  display: flex;
+  gap: 8px;
+}
+
+.add-position-form .form-input {
+  flex: 1;
+}
+
+.about-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.about-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.about-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.about-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
