@@ -5,7 +5,7 @@ import { generateId } from '../utils/helpers';
 const AppContext = createContext(null);
 
 const STORAGE_KEY = 'clock-app-data';
-const DATA_VERSION = 2; // Increment when sample data changes significantly
+const DATA_VERSION = 3; // Increment when sample data changes significantly
 
 // Access level hierarchy (higher index = more access)
 export const ACCESS_LEVELS = ['employee', 'manager', 'location_admin', 'master_admin'];
