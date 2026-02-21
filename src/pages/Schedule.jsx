@@ -33,7 +33,7 @@ import './Schedule.css';
 
 export default function Schedule() {
   const { state, dispatch } = useApp();
-  const { employees, shifts, positions, currentLocationId, locations, salesEntries } = state;
+  const { employees, shifts, positions, currentLocationId, locations, salesEntries, taskTemplates = [] } = state;
   const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
   const currentLocation = locations.find((l) => l.id === currentLocationId);
 
@@ -52,7 +52,10 @@ export default function Schedule() {
     endTime: '17:00',
     position: '',
     notes: '',
+    taskTemplateIds: [],
   });
+
+  const locationTemplates = useMemo(() => (taskTemplates || []).filter((t) => t.locationId === currentLocationId), [taskTemplates, currentLocationId]);
 
   // Drag and drop state
   const [draggedShift, setDraggedShift] = useState(null);
@@ -189,6 +192,7 @@ export default function Schedule() {
       endTime: '17:00',
       position: (locationEmployees.find((e) => e.id === employeeId)?.roles || [locationEmployees.find((e) => e.id === employeeId)?.role])[0] || positions[0] || '',
       notes: '',
+      taskTemplateIds: [],
     });
     setShowModal(true);
   }
@@ -205,6 +209,7 @@ export default function Schedule() {
       endTime: format(end, 'HH:mm'),
       position: shift.position,
       notes: shift.notes || '',
+      taskTemplateIds: shift.taskTemplateIds || [],
     });
     setShowModal(true);
   }
@@ -236,6 +241,7 @@ export default function Schedule() {
       end: end.toISOString(),
       position: formData.position,
       notes: formData.notes,
+      taskTemplateIds: formData.taskTemplateIds || [],
     };
 
     if (editingShift) {
@@ -433,6 +439,7 @@ export default function Schedule() {
                 endTime: '17:00',
                 position: positions[0] || '',
                 notes: '',
+                taskTemplateIds: [],
               });
               setShowModal(true);
             }}
@@ -546,8 +553,12 @@ export default function Schedule() {
             {scheduleData.map(({ employee, shifts: empShifts }) => (
               <div key={employee.id} className="schedule-grid__row">
                 <div className="schedule-grid__employee">
-                  <div className="schedule-grid__avatar" style={{ background: employee.color }}>
-                    {getInitials(employee.name)}
+                  <div className="schedule-grid__avatar" style={{ background: employee.photoUrl ? 'transparent' : employee.color }}>
+                    {employee.photoUrl ? (
+                      <img src={employee.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                    ) : (
+                      getInitials(employee.name)
+                    )}
                   </div>
                   <div>
                     <div className="schedule-grid__emp-name">{employee.name}</div>
@@ -617,6 +628,11 @@ export default function Schedule() {
                               {formatTime(s.start)} - {formatTime(s.end)}
                             </span>
                             <span className="schedule-shift__pos">{s.position}</span>
+                            {(s.taskTemplateIds || []).length > 0 && (
+                              <span className="schedule-shift__tasks" title={`${s.taskTemplateIds.length} task template(s) assigned`}>
+                                {s.taskTemplateIds.length} task{s.taskTemplateIds.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
                             {s.status === 'published' && (
                               <span className="schedule-shift__status">
                                 <Check size={10} /> Published
@@ -787,6 +803,33 @@ export default function Schedule() {
                     rows={3}
                   />
                 </div>
+
+                {locationTemplates.length > 0 && (
+                  <div className="form-group">
+                    <label className="form-label">Task Templates</label>
+                    <p className="form-hint">Assign task checklists to this shift. Tasks will be linked to the scheduled employee.</p>
+                    <div className="shift-template-chips">
+                      {locationTemplates.map((tmpl) => {
+                        const isSelected = (formData.taskTemplateIds || []).includes(tmpl.id);
+                        return (
+                          <button
+                            key={tmpl.id}
+                            type="button"
+                            className={`shift-template-chip ${isSelected ? 'shift-template-chip--active' : ''} shift-template-chip--${tmpl.type}`}
+                            onClick={() => {
+                              const ids = formData.taskTemplateIds || [];
+                              const newIds = isSelected ? ids.filter((id) => id !== tmpl.id) : [...ids, tmpl.id];
+                              setFormData({ ...formData, taskTemplateIds: newIds });
+                            }}
+                          >
+                            <span className="shift-template-chip__name">{tmpl.name}</span>
+                            <span className="shift-template-chip__count">{tmpl.subtasks.length} items</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="modal__footer">

@@ -563,6 +563,67 @@
 .bulk-labor-pct--warning { background: var(--warning-light); color: var(--warning); }
 .bulk-labor-pct--danger { background: var(--danger-light); color: var(--danger); }
 
+/* ===== PROJECTION RULES ===== */
+.projection-rules {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.projection-rules__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
+}
+
+.projection-rules__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.projection-rules__select {
+  flex: 1;
+  min-width: 200px;
+}
+
+.projection-adj-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 90px;
+}
+
+.projection-adj-input {
+  width: 70px !important;
+  text-align: center;
+}
+
+.projection-adj-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.projection-rules__hint {
+  font-size: 12px;
+  color: #7c3aed;
+  margin: 8px 0 0;
+  font-weight: 500;
+}
+
+.projection-rules__hint--info {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-style: italic;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
   .labour-summary { grid-template-columns: repeat(2, 1fr); }

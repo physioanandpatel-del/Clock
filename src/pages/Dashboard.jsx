@@ -4,9 +4,9 @@ import { useApp } from '../context/AppContext';
 import {
   Users, Clock, DollarSign, CalendarDays, TrendingUp, AlertCircle,
   Target, MapPin, CalendarOff, ListTodo, MessageSquare, ArrowRight,
-  CheckCircle2, AlertTriangle, BarChart3
+  CheckCircle2, AlertTriangle, BarChart3, Cake, Award
 } from 'lucide-react';
-import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval, formatDistanceToNow } from 'date-fns';
+import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval, formatDistanceToNow, differenceInYears, addDays } from 'date-fns';
 import { formatTime, formatDuration, getInitials, calculateLaborCost } from '../utils/helpers';
 import './Dashboard.css';
 
@@ -90,6 +90,53 @@ export default function Dashboard() {
         .slice(0, 3),
     [posts, employees]
   );
+
+  // Celebrations: upcoming birthdays and work anniversaries (next 14 days)
+  const celebrations = useMemo(() => {
+    const items = [];
+    const now = new Date();
+    locationEmployees.forEach((emp) => {
+      // Birthday check
+      if (emp.dateOfBirth) {
+        try {
+          const dob = new Date(emp.dateOfBirth + 'T00:00:00');
+          for (let d = 0; d <= 14; d++) {
+            const checkDate = addDays(now, d);
+            if (checkDate.getMonth() === dob.getMonth() && checkDate.getDate() === dob.getDate()) {
+              const age = differenceInYears(checkDate, dob);
+              items.push({
+                type: 'birthday',
+                employee: emp,
+                date: checkDate,
+                daysAway: d,
+                detail: d === 0 ? `Turns ${age} today!` : `Turns ${age} in ${d} day${d > 1 ? 's' : ''}`,
+              });
+            }
+          }
+        } catch { /* skip */ }
+      }
+      // Work anniversary check
+      if (emp.hireDate) {
+        try {
+          const hire = new Date(emp.hireDate + 'T00:00:00');
+          for (let d = 0; d <= 14; d++) {
+            const checkDate = addDays(now, d);
+            if (checkDate.getMonth() === hire.getMonth() && checkDate.getDate() === hire.getDate() && checkDate.getFullYear() !== hire.getFullYear()) {
+              const years = differenceInYears(checkDate, hire);
+              items.push({
+                type: 'anniversary',
+                employee: emp,
+                date: checkDate,
+                daysAway: d,
+                detail: d === 0 ? `${years} year${years > 1 ? 's' : ''} today!` : `${years} year${years > 1 ? 's' : ''} in ${d} day${d > 1 ? 's' : ''}`,
+              });
+            }
+          }
+        } catch { /* skip */ }
+      }
+    });
+    return items.sort((a, b) => a.daysAway - b.daysAway);
+  }, [locationEmployees]);
 
   const targetPercent = currentLocation?.targetLaborPercent || 30;
   const isOverTarget = stats.laborPercent > targetPercent + 2;
@@ -374,6 +421,37 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Celebrations */}
+      {celebrations.length > 0 && (
+        <div className="celebrations-bar">
+          <div className="celebrations-bar__header">
+            <Cake size={18} />
+            <h3 className="celebrations-bar__title">Celebrations</h3>
+          </div>
+          <div className="celebrations-bar__list">
+            {celebrations.map((item, i) => (
+              <div key={i} className={`celebration-item ${item.daysAway === 0 ? 'celebration-item--today' : ''}`}>
+                <div className="celebration-item__icon" style={{ background: item.employee.color }}>
+                  {item.employee.photoUrl ? (
+                    <img src={item.employee.photoUrl} alt="" className="celebration-item__photo" />
+                  ) : (
+                    getInitials(item.employee.name)
+                  )}
+                </div>
+                <div className="celebration-item__info">
+                  <span className="celebration-item__name">{item.employee.preferredName || item.employee.name}</span>
+                  <span className="celebration-item__detail">{item.detail}</span>
+                </div>
+                <span className={`celebration-item__badge celebration-item__badge--${item.type}`}>
+                  {item.type === 'birthday' ? <Cake size={12} /> : <Award size={12} />}
+                  {item.type === 'birthday' ? 'Birthday' : 'Anniversary'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions bar */}
       <div className="quick-actions-bar">

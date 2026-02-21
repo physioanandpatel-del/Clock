@@ -164,6 +164,7 @@ export default function Employees() {
       address: { street: '', city: '', province: '', postalCode: '' },
       skills: [], certifications: [], documents: [], notes: '',
       performanceRating: null, overtimeRate: 1.5, availability: {},
+      photoUrl: '',
     };
     setDetailEmp(newEmp);
     setFormData(newEmp);
@@ -350,8 +351,12 @@ export default function Employees() {
               </div>
 
               <div className="employee-card__header">
-                <div className="employee-card__avatar" style={{ background: emp.color }}>
-                  {getInitials(emp.name)}
+                <div className="employee-card__avatar" style={{ background: emp.photoUrl ? 'transparent' : emp.color }}>
+                  {emp.photoUrl ? (
+                    <img src={emp.photoUrl} alt={emp.name} className="employee-card__photo" />
+                  ) : (
+                    getInitials(emp.name)
+                  )}
                   {isClockedIn && <span className="avatar-clocked-indicator" />}
                 </div>
                 <div className="employee-card__header-right">
@@ -474,8 +479,12 @@ export default function Employees() {
             {/* Panel Header */}
             <div className="sling-panel__header">
               <div className="sling-panel__header-left">
-                <div className="sling-panel__avatar" style={{ background: formData.color }}>
-                  {formData.name ? getInitials(formData.name) : '?'}
+                <div className="sling-panel__avatar" style={{ background: formData.photoUrl ? 'transparent' : formData.color }}>
+                  {formData.photoUrl ? (
+                    <img src={formData.photoUrl} alt={formData.name || ''} className="sling-panel__photo" />
+                  ) : (
+                    formData.name ? getInitials(formData.name) : '?'
+                  )}
                 </div>
                 <div>
                   <h2 className="sling-panel__name">{formData.preferredName || formData.name || 'New Employee'}</h2>
@@ -610,6 +619,20 @@ export default function Employees() {
                         <button key={c} type="button" className={`color-swatch ${formData.color === c ? 'color-swatch--active' : ''}`} style={{ background: c }} onClick={() => updateForm('color', c)} />
                       ))}
                     </div>
+                  </div>
+
+                  <div className="sling-section">
+                    <h3 className="sling-section__title">Profile Photo</h3>
+                    <div className="sling-field">
+                      <label className="sling-field__label">Photo URL</label>
+                      <input type="url" className="sling-field__input" value={formData.photoUrl || ''} onChange={(e) => updateForm('photoUrl', e.target.value)} placeholder="https://example.com/photo.jpg" />
+                      <span className="sling-field__hint">Enter a URL to the employee's profile photo. Shows on cards and the schedule.</span>
+                    </div>
+                    {formData.photoUrl && (
+                      <div className="photo-preview">
+                        <img src={formData.photoUrl} alt="Preview" className="photo-preview__img" onError={(e) => { e.target.style.display = 'none'; }} />
+                      </div>
+                    )}
                   </div>
 
                   <div className="sling-section">

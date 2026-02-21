@@ -23,6 +23,8 @@ export default function Labour() {
   const [salesForm, setSalesForm] = useState({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' });
   const [bulkSales, setBulkSales] = useState({});
   const [projectedSales, setProjectedSales] = useState({});
+  const [projectionRule, setProjectionRule] = useState('historical_avg');
+  const [projectionAdjustment, setProjectionAdjustment] = useState(20);
 
   const currentWeekStart = useMemo(() => addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), weekOffset), [weekOffset]);
   const currentWeekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
@@ -210,9 +212,7 @@ export default function Labour() {
     setShowSalesModal(false);
   }
 
-  function autofillProjected() {
-    if (avgWeeklySales <= 0) return;
-    // Use day-of-week averages from historical data
+  function getDayOfWeekAverages() {
     const dayAvg = {};
     historicalData.forEach((week) => {
       for (let d = 0; d < 7; d++) {
@@ -225,16 +225,59 @@ export default function Labour() {
         }
       }
     });
+    return dayAvg;
+  }
+
+  function autofillProjected() {
+    const adjustment = projectionRule.endsWith('_adj') ? 1 + (projectionAdjustment / 100) : 1;
     const filled = {};
-    weekDays.forEach((day) => {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      const dow = day.getDay();
-      if (dayAvg[dow] && dayAvg[dow].length > 0) {
-        filled[dateStr] = String(Math.round(dayAvg[dow].reduce((a, b) => a + b, 0) / dayAvg[dow].length));
-      } else {
-        filled[dateStr] = String(Math.round(avgWeeklySales / 7));
-      }
-    });
+
+    if (projectionRule === 'historical_avg' || projectionRule === 'historical_avg_adj') {
+      if (avgWeeklySales <= 0) return;
+      const dayAvg = getDayOfWeekAverages();
+      weekDays.forEach((day) => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const dow = day.getDay();
+        let amount = (dayAvg[dow] && dayAvg[dow].length > 0)
+          ? dayAvg[dow].reduce((a, b) => a + b, 0) / dayAvg[dow].length
+          : avgWeeklySales / 7;
+        filled[dateStr] = String(Math.round(amount * adjustment));
+      });
+    } else if (projectionRule === 'last_year' || projectionRule === 'last_year_adj') {
+      const dayAvg = getDayOfWeekAverages();
+      weekDays.forEach((day) => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const lastYearDate = format(subWeeks(day, 52), 'yyyy-MM-dd');
+        const entry = salesEntries.find((s) => s.locationId === currentLocationId && s.date === lastYearDate && (s.type || 'actual') === 'actual');
+        let amount;
+        if (entry) {
+          amount = entry.amount;
+        } else {
+          // Fallback to day-of-week average if no last year data
+          const dow = day.getDay();
+          amount = (dayAvg[dow] && dayAvg[dow].length > 0)
+            ? dayAvg[dow].reduce((a, b) => a + b, 0) / dayAvg[dow].length
+            : (avgWeeklySales > 0 ? avgWeeklySales / 7 : 0);
+        }
+        filled[dateStr] = String(Math.round(amount * adjustment));
+      });
+    } else if (projectionRule === 'last_week' || projectionRule === 'last_week_adj') {
+      const dayAvg = getDayOfWeekAverages();
+      weekDays.forEach((day) => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const lastWeekDate = format(subWeeks(day, 1), 'yyyy-MM-dd');
+        const entry = salesEntries.find((s) => s.locationId === currentLocationId && s.date === lastWeekDate && (s.type || 'actual') === 'actual');
+        let amount;
+        if (entry) {
+          amount = entry.amount;
+        } else {
+          const dow = day.getDay();
+          amount = (dayAvg[dow] && dayAvg[dow].length > 0)
+            ? dayAvg[dow].reduce((a, b) => a + b, 0) / dayAvg[dow].length : 0;
+        }
+        filled[dateStr] = String(Math.round(amount * adjustment));
+      });
+    }
     setProjectedSales(filled);
   }
 
@@ -632,9 +675,39 @@ export default function Labour() {
                       </span>
                     )}
                   </div>
-                  <button type="button" className="btn btn--secondary btn--sm" onClick={autofillProjected} style={{ marginTop: 8 }}>
-                    <Zap size={12} /> Auto-fill from historical averages
-                  </button>
+                  <div className="projection-rules">
+                    <h4 className="projection-rules__title">Auto-fill Projections</h4>
+                    <div className="projection-rules__row">
+                      <select className="form-input projection-rules__select" value={projectionRule} onChange={(e) => setProjectionRule(e.target.value)}>
+                        <option value="historical_avg">Historical Average (8-week)</option>
+                        <option value="historical_avg_adj">Historical Average + Adjustment %</option>
+                        <option value="last_week">Last Week's Sales</option>
+                        <option value="last_week_adj">Last Week + Adjustment %</option>
+                        <option value="last_year">Same Period Last Year</option>
+                        <option value="last_year_adj">Same Period Last Year + Adjustment %</option>
+                      </select>
+                      {projectionRule.endsWith('_adj') && (
+                        <div className="projection-adj-wrap">
+                          <input type="number" className="form-input projection-adj-input" value={projectionAdjustment} onChange={(e) => setProjectionAdjustment(Number(e.target.value))} />
+                          <span className="projection-adj-label">%</span>
+                        </div>
+                      )}
+                      <button type="button" className="btn btn--secondary btn--sm" onClick={autofillProjected}>
+                        <Zap size={12} /> Apply
+                      </button>
+                    </div>
+                    {projectionRule.endsWith('_adj') && (
+                      <p className="projection-rules__hint">
+                        {projectionAdjustment > 0 ? '+' : ''}{projectionAdjustment}% adjustment to{' '}
+                        {projectionRule.startsWith('last_year') ? "last year's" : projectionRule.startsWith('last_week') ? "last week's" : 'historical average'} sales
+                      </p>
+                    )}
+                    {projectionRule.startsWith('last_year') && (
+                      <p className="projection-rules__hint projection-rules__hint--info">
+                        Uses sales from 52 weeks ago. Falls back to historical average if no data.
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="modal__footer">
                   <div className="modal__footer-right">

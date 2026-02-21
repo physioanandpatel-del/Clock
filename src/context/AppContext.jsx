@@ -35,6 +35,7 @@ function loadState() {
       if (!data.payrollSettings) data.payrollSettings = { period: 'biweekly', startDay: 1 };
       if (!data.posts) data.posts = [];
       if (!data.tasks) data.tasks = [];
+      if (!data.taskTemplates) data.taskTemplates = [];
       if (!data.currentUserId) data.currentUserId = data.employees?.[0]?.id || '1';
       if (!data.accessLevels) data.accessLevels = ACCESS_LEVELS;
       if (!data.groups) data.groups = ['Front of House', 'Back of House', 'Management', 'Training', 'Opening Crew', 'Closing Crew'];
@@ -52,6 +53,7 @@ function loadState() {
         emergencyContact: e.emergencyContact || null,
         timezone: e.timezone || 'America/Toronto',
         countryCode: e.countryCode || '+1',
+        photoUrl: e.photoUrl || '',
         clockPin: e.clockPin || '',
         timeClockEnabled: e.timeClockEnabled !== undefined ? e.timeClockEnabled : true,
         groups: e.groups || [],
@@ -75,6 +77,7 @@ function loadState() {
       data.shifts = (data.shifts || []).map((s) => ({
         ...s,
         status: s.status === 'published' ? 'published' : 'draft',
+        taskTemplateIds: s.taskTemplateIds || [],
       }));
       data.locations = data.locations.map((l) => ({
         ...l,
@@ -153,6 +156,7 @@ function reducer(state, action) {
         emergencyContact: action.payload.emergencyContact || null,
         timezone: action.payload.timezone || 'America/Toronto',
         countryCode: action.payload.countryCode || '+1',
+        photoUrl: action.payload.photoUrl || '',
         clockPin: action.payload.clockPin || '',
         timeClockEnabled: action.payload.timeClockEnabled !== undefined ? action.payload.timeClockEnabled : true,
         groups: action.payload.groups || [],
@@ -184,7 +188,7 @@ function reducer(state, action) {
 
     // Shift
     case 'ADD_SHIFT': {
-      const shift = { ...action.payload, id: generateId(), status: action.payload.status || 'draft' };
+      const shift = { ...action.payload, id: generateId(), status: action.payload.status || 'draft', taskTemplateIds: action.payload.taskTemplateIds || [] };
       return { ...state, shifts: [...state.shifts, shift] };
     }
     case 'UPDATE_SHIFT':
@@ -293,6 +297,25 @@ function reducer(state, action) {
       const { taskId, text } = action.payload;
       const subtask = { id: generateId(), text, done: false };
       return { ...state, tasks: state.tasks.map((t) => t.id === taskId ? { ...t, subtasks: [...t.subtasks, subtask] } : t) };
+    }
+
+    // Task Templates
+    case 'ADD_TASK_TEMPLATE': {
+      const template = { ...action.payload, id: generateId() };
+      return { ...state, taskTemplates: [...(state.taskTemplates || []), template] };
+    }
+    case 'UPDATE_TASK_TEMPLATE':
+      return { ...state, taskTemplates: (state.taskTemplates || []).map((t) => t.id === action.payload.id ? { ...t, ...action.payload } : t) };
+    case 'DELETE_TASK_TEMPLATE': {
+      // Also remove from any shifts that reference it
+      return {
+        ...state,
+        taskTemplates: (state.taskTemplates || []).filter((t) => t.id !== action.payload),
+        shifts: state.shifts.map((s) => ({
+          ...s,
+          taskTemplateIds: (s.taskTemplateIds || []).filter((tid) => tid !== action.payload),
+        })),
+      };
     }
 
     // Payroll Settings

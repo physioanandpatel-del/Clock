@@ -537,6 +537,64 @@
   letter-spacing: 0.3px;
 }
 
+/* Task template indicator on shift */
+.schedule-shift__tasks {
+  font-size: 9px;
+  font-weight: 600;
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+  display: inline-block;
+}
+
+/* Task template chips in shift modal */
+.shift-template-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.shift-template-chip {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-white);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.shift-template-chip:hover { border-color: var(--primary); }
+
+.shift-template-chip--active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.shift-template-chip--active.shift-template-chip--opening { border-color: #f59e0b; background: #fef3c7; }
+.shift-template-chip--active.shift-template-chip--closing { border-color: #7c3aed; background: #ede9fe; }
+.shift-template-chip--active.shift-template-chip--weekly { border-color: #2563eb; background: #dbeafe; }
+
+.shift-template-chip__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.shift-template-chip__count {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 /* Copy Toast */
 .copy-toast {
   position: fixed;

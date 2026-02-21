@@ -17,7 +17,7 @@ export function generateSampleData() {
 
   const employees = [
     {
-      id: '1', name: 'Sarah Johnson', preferredName: 'Sarah', roles: ['Manager'], email: 'sarah.johnson@clock.app', phone: '555-0101', countryCode: '+1', timezone: 'America/Toronto', dateOfBirth: '1988-03-15', color: COLORS[0], hourlyRate: 28, locationIds: ['loc1', 'loc2'], accessLevel: 'master_admin',
+      id: '1', name: 'Sarah Johnson', preferredName: 'Sarah', roles: ['Manager'], email: 'sarah.johnson@clock.app', phone: '555-0101', countryCode: '+1', timezone: 'America/Toronto', dateOfBirth: '1988-03-15', color: COLORS[0], hourlyRate: 28, locationIds: ['loc1', 'loc2'], accessLevel: 'master_admin', photoUrl: '',
       bankInfo: { bankName: 'TD Bank', transitNumber: '00412', accountNumber: '1234567' },
       ptoBalance: { sick: 10, vacation: 15, personal: 5 }, hireDate: '2020-01-15',
       emergencyContact: { name: 'Mark Johnson', phone: '555-9901', relationship: 'Spouse' },
@@ -314,6 +314,62 @@ export function generateSampleData() {
     });
   }
 
+  const taskTemplates = [
+    {
+      id: 'tt1', name: 'Opening Tasks', type: 'opening', locationId: 'loc1',
+      subtasks: [
+        { id: 'tts1', text: 'Turn on lights, HVAC, and music', order: 0 },
+        { id: 'tts2', text: 'Check voicemail and emails', order: 1 },
+        { id: 'tts3', text: 'Count opening cash drawer', order: 2 },
+        { id: 'tts4', text: 'Set up patio (seasonal)', order: 3 },
+        { id: 'tts5', text: 'Prep side stations and condiments', order: 4 },
+        { id: 'tts6', text: 'Check daily specials board', order: 5 },
+      ],
+    },
+    {
+      id: 'tt2', name: 'Closing Tasks', type: 'closing', locationId: 'loc1',
+      subtasks: [
+        { id: 'tts7', text: 'Wipe down all tables and chairs', order: 0 },
+        { id: 'tts8', text: 'Sweep and mop floors', order: 1 },
+        { id: 'tts9', text: 'Close out POS and count cash', order: 2 },
+        { id: 'tts10', text: 'Check all doors and windows locked', order: 3 },
+        { id: 'tts11', text: 'Turn off lights, HVAC, and music', order: 4 },
+        { id: 'tts12', text: 'Take out trash and recycling', order: 5 },
+        { id: 'tts13', text: 'Set alarm system', order: 6 },
+      ],
+    },
+    {
+      id: 'tt3', name: 'Weekly Deep Clean', type: 'weekly', locationId: 'loc1',
+      subtasks: [
+        { id: 'tts14', text: 'Deep clean fryers and grease traps', order: 0 },
+        { id: 'tts15', text: 'Clean walk-in fridge and check temps', order: 1 },
+        { id: 'tts16', text: 'Sanitize ice machine', order: 2 },
+        { id: 'tts17', text: 'Clean hood vents and filters', order: 3 },
+        { id: 'tts18', text: 'Restock paper goods and supplies', order: 4 },
+      ],
+    },
+    {
+      id: 'tt4', name: 'Opening Tasks', type: 'opening', locationId: 'loc2',
+      subtasks: [
+        { id: 'tts19', text: 'Turn on lights and music', order: 0 },
+        { id: 'tts20', text: 'Count opening cash drawer', order: 1 },
+        { id: 'tts21', text: 'Stock bar garnishes and ice', order: 2 },
+        { id: 'tts22', text: 'Prep side stations', order: 3 },
+        { id: 'tts23', text: 'Review reservation list', order: 4 },
+      ],
+    },
+    {
+      id: 'tt5', name: 'Closing Tasks', type: 'closing', locationId: 'loc2',
+      subtasks: [
+        { id: 'tts24', text: 'Clean all tables and bar top', order: 0 },
+        { id: 'tts25', text: 'Sweep and mop entire floor', order: 1 },
+        { id: 'tts26', text: 'Close out POS and tip reports', order: 2 },
+        { id: 'tts27', text: 'Lock all entrances and set alarm', order: 3 },
+        { id: 'tts28', text: 'Take out trash', order: 4 },
+      ],
+    },
+  ];
+
   const posts = [
     { id: 'p1', authorId: '1', content: 'Reminder: Staff meeting this Friday at 3pm. Please confirm attendance!', createdAt: subDays(today, 1).toISOString(), likes: ['2', '3', '5'], comments: [{ id: 'c1', authorId: '2', content: "I'll be there!", createdAt: subDays(today, 1).toISOString() }] },
     { id: 'p2', authorId: '4', content: 'New menu items launching next week. Training session on Wednesday.', createdAt: subDays(today, 3).toISOString(), likes: ['1', '6'], comments: [] },
@@ -331,5 +387,5 @@ export function generateSampleData() {
 
   const payrollSettings = { period: 'biweekly', startDay: 1 };
 
-  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks };
+  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates };
 }
