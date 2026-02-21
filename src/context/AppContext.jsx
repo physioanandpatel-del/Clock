@@ -36,6 +36,11 @@ function loadState() {
       if (!data.posts) data.posts = [];
       if (!data.tasks) data.tasks = [];
       if (!data.taskTemplates) data.taskTemplates = [];
+      if (!data.shiftSwaps) data.shiftSwaps = [];
+      if (!data.trainingPrograms) data.trainingPrograms = [];
+      if (!data.trainingAssignments) data.trainingAssignments = [];
+      if (!data.surveyTemplates) data.surveyTemplates = [];
+      if (!data.surveyResponses) data.surveyResponses = [];
       if (!data.currentUserId) data.currentUserId = data.employees?.[0]?.id || '1';
       if (!data.accessLevels) data.accessLevels = ACCESS_LEVELS;
       if (!data.groups) data.groups = ['Front of House', 'Back of House', 'Management', 'Training', 'Opening Crew', 'Closing Crew'];
@@ -317,6 +322,77 @@ function reducer(state, action) {
         })),
       };
     }
+
+    // Shift Swaps
+    case 'ADD_SHIFT_SWAP': {
+      const swap = { ...action.payload, id: generateId(), createdAt: new Date().toISOString(), status: 'open', claimedById: null, managerNote: '' };
+      return { ...state, shiftSwaps: [...(state.shiftSwaps || []), swap] };
+    }
+    case 'CLAIM_SHIFT_SWAP':
+      return { ...state, shiftSwaps: (state.shiftSwaps || []).map((sw) => sw.id === action.payload.swapId ? { ...sw, claimedById: action.payload.employeeId, status: 'claimed' } : sw) };
+    case 'APPROVE_SHIFT_SWAP': {
+      const swap = (state.shiftSwaps || []).find((sw) => sw.id === action.payload.swapId);
+      if (!swap || !swap.claimedById) return state;
+      return {
+        ...state,
+        shiftSwaps: state.shiftSwaps.map((sw) => sw.id === action.payload.swapId ? { ...sw, status: 'approved', managerNote: action.payload.note || '' } : sw),
+        shifts: state.shifts.map((s) => s.id === swap.shiftId ? { ...s, employeeId: swap.claimedById } : s),
+      };
+    }
+    case 'DENY_SHIFT_SWAP':
+      return { ...state, shiftSwaps: (state.shiftSwaps || []).map((sw) => sw.id === action.payload.swapId ? { ...sw, status: 'denied', claimedById: null, managerNote: action.payload.note || '' } : sw) };
+    case 'CANCEL_SHIFT_SWAP':
+      return { ...state, shiftSwaps: (state.shiftSwaps || []).filter((sw) => sw.id !== action.payload) };
+
+    // Training Programs
+    case 'ADD_TRAINING_PROGRAM': {
+      const prog = { ...action.payload, id: generateId() };
+      return { ...state, trainingPrograms: [...(state.trainingPrograms || []), prog] };
+    }
+    case 'UPDATE_TRAINING_PROGRAM':
+      return { ...state, trainingPrograms: (state.trainingPrograms || []).map((p) => p.id === action.payload.id ? { ...p, ...action.payload } : p) };
+    case 'DELETE_TRAINING_PROGRAM':
+      return {
+        ...state,
+        trainingPrograms: (state.trainingPrograms || []).filter((p) => p.id !== action.payload),
+        trainingAssignments: (state.trainingAssignments || []).filter((a) => a.programId !== action.payload),
+      };
+
+    // Training Assignments
+    case 'ASSIGN_TRAINING': {
+      const assignment = { ...action.payload, id: generateId(), completedModules: [], status: 'assigned', assignedDate: new Date().toISOString().split('T')[0] };
+      return { ...state, trainingAssignments: [...(state.trainingAssignments || []), assignment] };
+    }
+    case 'COMPLETE_TRAINING_MODULE': {
+      const { assignmentId, moduleId } = action.payload;
+      return { ...state, trainingAssignments: (state.trainingAssignments || []).map((a) => {
+        if (a.id !== assignmentId) return a;
+        const completed = a.completedModules.includes(moduleId) ? a.completedModules.filter((m) => m !== moduleId) : [...a.completedModules, moduleId];
+        return { ...a, completedModules: completed, status: completed.length > 0 ? 'in_progress' : 'assigned' };
+      }) };
+    }
+    case 'COMPLETE_TRAINING':
+      return { ...state, trainingAssignments: (state.trainingAssignments || []).map((a) => a.id === action.payload ? { ...a, status: 'completed', completedDate: new Date().toISOString().split('T')[0] } : a) };
+    case 'DELETE_TRAINING_ASSIGNMENT':
+      return { ...state, trainingAssignments: (state.trainingAssignments || []).filter((a) => a.id !== action.payload) };
+
+    // Survey Templates
+    case 'ADD_SURVEY_TEMPLATE': {
+      const tmpl = { ...action.payload, id: generateId() };
+      return { ...state, surveyTemplates: [...(state.surveyTemplates || []), tmpl] };
+    }
+    case 'UPDATE_SURVEY_TEMPLATE':
+      return { ...state, surveyTemplates: (state.surveyTemplates || []).map((s) => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
+    case 'DELETE_SURVEY_TEMPLATE':
+      return { ...state, surveyTemplates: (state.surveyTemplates || []).filter((s) => s.id !== action.payload) };
+
+    // Survey Responses
+    case 'SEND_SURVEY': {
+      const resp = { ...action.payload, id: generateId(), sentDate: new Date().toISOString().split('T')[0], completedDate: null, status: 'pending', answers: [] };
+      return { ...state, surveyResponses: [...(state.surveyResponses || []), resp] };
+    }
+    case 'COMPLETE_SURVEY':
+      return { ...state, surveyResponses: (state.surveyResponses || []).map((r) => r.id === action.payload.responseId ? { ...r, answers: action.payload.answers, status: 'completed', completedDate: new Date().toISOString().split('T')[0] } : r) };
 
     // Payroll Settings
     case 'UPDATE_PAYROLL_SETTINGS':

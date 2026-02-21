@@ -387,5 +387,103 @@ export function generateSampleData() {
 
   const payrollSettings = { period: 'biweekly', startDay: 1 };
 
-  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates };
+  // Shift Swaps
+  const shiftSwaps = [
+    { id: 'sw1', shiftId: shifts[2]?.id || '3', requesterId: '3', reason: 'University exam conflict', status: 'open', claimedById: null, createdAt: subDays(today, 1).toISOString(), managerNote: '' },
+    { id: 'sw2', shiftId: shifts[8]?.id || '9', requesterId: '2', reason: 'Doctor appointment', status: 'claimed', claimedById: '9', createdAt: subDays(today, 2).toISOString(), managerNote: '' },
+  ];
+
+  // Training Programs
+  const trainingPrograms = [
+    {
+      id: 'tp1', name: 'New Hire Onboarding', locationId: 'loc1',
+      modules: [
+        { id: 'tm1', text: 'Company policies & handbook review', order: 0 },
+        { id: 'tm2', text: 'Health & safety orientation', order: 1 },
+        { id: 'tm3', text: 'POS system training', order: 2 },
+        { id: 'tm4', text: 'Menu knowledge test', order: 3 },
+        { id: 'tm5', text: 'Shadow shift with experienced staff', order: 4 },
+        { id: 'tm6', text: 'Solo shift evaluation', order: 5 },
+      ],
+    },
+    {
+      id: 'tp2', name: 'Bartender Certification', locationId: 'loc1',
+      modules: [
+        { id: 'tm7', text: 'Smart Serve / responsible service', order: 0 },
+        { id: 'tm8', text: 'Classic cocktail recipes', order: 1 },
+        { id: 'tm9', text: 'Specialty cocktail menu', order: 2 },
+        { id: 'tm10', text: 'Wine & beer knowledge', order: 3 },
+        { id: 'tm11', text: 'Speed test & practical exam', order: 4 },
+      ],
+    },
+    {
+      id: 'tp3', name: 'New Hire Onboarding', locationId: 'loc2',
+      modules: [
+        { id: 'tm12', text: 'Company policies & handbook review', order: 0 },
+        { id: 'tm13', text: 'Health & safety orientation', order: 1 },
+        { id: 'tm14', text: 'POS system training', order: 2 },
+        { id: 'tm15', text: 'Menu knowledge test', order: 3 },
+        { id: 'tm16', text: 'Shadow shift with experienced staff', order: 4 },
+      ],
+    },
+  ];
+
+  // Training Assignments
+  const trainingAssignments = [
+    { id: 'ta1', programId: 'tp1', employeeId: '9', assignedDate: '2024-03-15', completedModules: ['tm1', 'tm2', 'tm3', 'tm4', 'tm5', 'tm6'], status: 'completed', completedDate: '2024-04-20' },
+    { id: 'ta2', programId: 'tp1', employeeId: '10', assignedDate: '2024-06-01', completedModules: ['tm1', 'tm2', 'tm3', 'tm4'], status: 'in_progress' },
+    { id: 'ta3', programId: 'tp3', employeeId: '6', assignedDate: '2024-01-10', completedModules: ['tm12', 'tm13', 'tm14'], status: 'in_progress' },
+    { id: 'ta4', programId: 'tp3', employeeId: '12', assignedDate: '2024-09-01', completedModules: ['tm12', 'tm13'], status: 'in_progress' },
+  ];
+
+  // Survey Templates
+  const surveyTemplates = [
+    {
+      id: 'sv1', name: '30-Day New Hire Check-in', type: 'new_hire', triggerDays: 30, intervalDays: 0, locationId: 'loc1',
+      questions: [
+        { id: 'q1', text: 'How would you rate your onboarding experience so far?', type: 'rating' },
+        { id: 'q2', text: 'Do you feel welcomed and supported by your team?', type: 'rating' },
+        { id: 'q3', text: 'Is your training adequate for your role?', type: 'rating' },
+        { id: 'q4', text: 'What could we improve about the onboarding process?', type: 'text' },
+      ],
+    },
+    {
+      id: 'sv2', name: '90-Day Performance Check-in', type: 'new_hire', triggerDays: 90, intervalDays: 0, locationId: 'loc1',
+      questions: [
+        { id: 'q5', text: 'How confident do you feel performing your job duties?', type: 'rating' },
+        { id: 'q6', text: 'How well does your manager communicate expectations?', type: 'rating' },
+        { id: 'q7', text: 'Would you recommend working here to a friend?', type: 'rating' },
+        { id: 'q8', text: 'What additional training or support do you need?', type: 'text' },
+      ],
+    },
+    {
+      id: 'sv3', name: 'Quarterly Team Pulse', type: 'periodic', triggerDays: 0, intervalDays: 90, locationId: 'loc1',
+      questions: [
+        { id: 'q9', text: 'How satisfied are you with your work-life balance?', type: 'rating' },
+        { id: 'q10', text: 'How would you rate team communication?', type: 'rating' },
+        { id: 'q11', text: 'Do you feel recognized for your contributions?', type: 'rating' },
+        { id: 'q12', text: 'Any suggestions or concerns?', type: 'text' },
+      ],
+    },
+    {
+      id: 'sv4', name: 'Annual Engagement Survey', type: 'periodic', triggerDays: 0, intervalDays: 365, locationId: 'loc1',
+      questions: [
+        { id: 'q13', text: 'Overall job satisfaction?', type: 'rating' },
+        { id: 'q14', text: 'How well does leadership support your growth?', type: 'rating' },
+        { id: 'q15', text: 'How likely are you to stay with us for another year?', type: 'rating' },
+        { id: 'q16', text: 'What is the best thing about working here?', type: 'text' },
+        { id: 'q17', text: 'What would you change if you could?', type: 'text' },
+      ],
+    },
+  ];
+
+  // Survey Responses
+  const surveyResponses = [
+    { id: 'sr1', surveyId: 'sv1', employeeId: '9', sentDate: '2024-04-14', completedDate: '2024-04-15', status: 'completed', answers: [{ questionId: 'q1', value: 4 }, { questionId: 'q2', value: 5 }, { questionId: 'q3', value: 4 }, { questionId: 'q4', value: 'More shadow shifts with experienced servers would help' }] },
+    { id: 'sr2', surveyId: 'sv3', employeeId: '2', sentDate: format(subDays(today, 5), 'yyyy-MM-dd'), completedDate: format(subDays(today, 3), 'yyyy-MM-dd'), status: 'completed', answers: [{ questionId: 'q9', value: 4 }, { questionId: 'q10', value: 3 }, { questionId: 'q11', value: 4 }, { questionId: 'q12', value: 'Would love a better system for shift swaps' }] },
+    { id: 'sr3', surveyId: 'sv3', employeeId: '4', sentDate: format(subDays(today, 5), 'yyyy-MM-dd'), completedDate: null, status: 'pending', answers: [] },
+    { id: 'sr4', surveyId: 'sv1', employeeId: '10', sentDate: '2024-07-01', completedDate: '2024-07-02', status: 'completed', answers: [{ questionId: 'q1', value: 5 }, { questionId: 'q2', value: 5 }, { questionId: 'q3', value: 4 }, { questionId: 'q4', value: 'Training kitchen was great, very supportive team' }] },
+  ];
+
+  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses };
 }

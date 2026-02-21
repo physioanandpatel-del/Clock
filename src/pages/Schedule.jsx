@@ -27,13 +27,16 @@ import {
   Check,
   AlertTriangle,
   XCircle,
+  Repeat,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import { formatTime, getInitials } from '../utils/helpers';
 import './Schedule.css';
 
 export default function Schedule() {
   const { state, dispatch } = useApp();
-  const { employees, shifts, positions, currentLocationId, locations, salesEntries, taskTemplates = [] } = state;
+  const { employees, shifts, positions, currentLocationId, locations, salesEntries, taskTemplates = [], shiftSwaps = [], currentUserId } = state;
   const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
   const currentLocation = locations.find((l) => l.id === currentLocationId);
 
@@ -71,6 +74,12 @@ export default function Schedule() {
 
   // Labor warning state
   const [laborWarning, setLaborWarning] = useState(null);
+
+  // Swap board state
+  const [showSwapBoard, setShowSwapBoard] = useState(false);
+  const [showSwapRequestModal, setShowSwapRequestModal] = useState(false);
+  const [swapShiftId, setSwapShiftId] = useState(null);
+  const [swapReason, setSwapReason] = useState('');
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -406,6 +415,56 @@ export default function Schedule() {
 
   const selectedCount = selectedShifts.size;
 
+  // Swap Board data
+  const activeSwaps = useMemo(() => {
+    return (shiftSwaps || []).filter((sw) => sw.status === 'open' || sw.status === 'claimed').map((sw) => {
+      const shift = shifts.find((s) => s.id === sw.shiftId);
+      const requester = employees.find((e) => e.id === sw.requesterId);
+      const claimer = sw.claimedById ? employees.find((e) => e.id === sw.claimedById) : null;
+      return { ...sw, shift, requester, claimer };
+    }).filter((sw) => sw.shift);
+  }, [shiftSwaps, shifts, employees]);
+
+  const swapCount = activeSwaps.length;
+
+  function handlePostSwap(e) {
+    e.preventDefault();
+    if (!swapShiftId || !swapReason.trim()) return;
+    dispatch({ type: 'ADD_SHIFT_SWAP', payload: { shiftId: swapShiftId, requesterId: currentUserId, reason: swapReason.trim() } });
+    setShowSwapRequestModal(false);
+    setSwapReason('');
+    setSwapShiftId(null);
+  }
+
+  function handleClaimSwap(swapId) {
+    dispatch({ type: 'CLAIM_SHIFT_SWAP', payload: { swapId, employeeId: currentUserId } });
+  }
+
+  function handleApproveSwap(swapId) {
+    dispatch({ type: 'APPROVE_SHIFT_SWAP', payload: { swapId, note: '' } });
+  }
+
+  function handleDenySwap(swapId) {
+    dispatch({ type: 'DENY_SHIFT_SWAP', payload: { swapId, note: '' } });
+  }
+
+  function handleCancelSwap(swapId) {
+    dispatch({ type: 'CANCEL_SHIFT_SWAP', payload: swapId });
+  }
+
+  // Get current user's shifts for swap posting
+  const myUpcomingShifts = useMemo(() => {
+    return shifts.filter((s) => {
+      const empIds = locationEmployees.map((e) => e.id);
+      if (!empIds.includes(s.employeeId)) return false;
+      const d = parseISO(s.start);
+      return d >= new Date();
+    }).map((s) => {
+      const emp = employees.find((e) => e.id === s.employeeId);
+      return { ...s, empName: emp?.preferredName || emp?.name || 'Unknown' };
+    });
+  }, [shifts, locationEmployees, employees]);
+
   return (
     <div className="schedule-page">
       <div className="page-header">
@@ -427,6 +486,9 @@ export default function Schedule() {
               <ChevronRight size={18} />
             </button>
           </div>
+          <button className={`btn btn--secondary ${swapCount > 0 ? 'btn--swap-alert' : ''}`} onClick={() => setShowSwapBoard(true)}>
+            <Repeat size={16} /> Swap Board {swapCount > 0 && <span className="swap-count-badge">{swapCount}</span>}
+          </button>
           <button
             className="btn btn--primary"
             onClick={() => {
@@ -849,6 +911,131 @@ export default function Schedule() {
                   >
                     {editingShift ? 'Save Changes' : 'Create Shift'}
                   </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ===== SWAP BOARD MODAL ===== */}
+      {showSwapBoard && (
+        <div className="modal-overlay" onClick={() => setShowSwapBoard(false)}>
+          <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title"><Repeat size={18} /> Shift Swap Board</h2>
+              <button className="btn btn--icon" onClick={() => setShowSwapBoard(false)}><X size={18} /></button>
+            </div>
+            <div className="modal__body">
+              <div className="swap-board-header">
+                <p className="swap-board-desc">Employees can post shifts they need covered. Others pick them up, then a manager approves.</p>
+                <button className="btn btn--primary btn--sm" onClick={() => { setShowSwapBoard(false); setShowSwapRequestModal(true); }}>
+                  <Plus size={14} /> Post Swap Request
+                </button>
+              </div>
+
+              {activeSwaps.length === 0 ? (
+                <div className="empty-state" style={{ padding: '40px 20px' }}>
+                  <Repeat size={40} className="empty-state__icon" />
+                  <p>No open swap requests</p>
+                </div>
+              ) : (
+                <div className="swap-list">
+                  {activeSwaps.map((sw) => (
+                    <div key={sw.id} className={`swap-card swap-card--${sw.status}`}>
+                      <div className="swap-card__shift-info">
+                        <div className="swap-card__avatar" style={{ background: sw.requester?.color || '#94a3b8' }}>
+                          {sw.requester?.photoUrl ? (
+                            <img src={sw.requester.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                          ) : (
+                            getInitials(sw.requester?.name || '?')
+                          )}
+                        </div>
+                        <div className="swap-card__details">
+                          <span className="swap-card__name">{sw.requester?.preferredName || sw.requester?.name}</span>
+                          <span className="swap-card__shift-time">
+                            {sw.shift ? `${format(parseISO(sw.shift.start), 'EEE, MMM d')} - ${formatTime(sw.shift.start)} to ${formatTime(sw.shift.end)}` : 'Shift not found'}
+                          </span>
+                          <span className="swap-card__position">{sw.shift?.position}</span>
+                        </div>
+                      </div>
+                      <div className="swap-card__reason">
+                        <span className="swap-card__reason-label">Reason:</span> {sw.reason}
+                      </div>
+                      <div className="swap-card__actions">
+                        {sw.status === 'open' && (
+                          <>
+                            <button className="btn btn--secondary btn--sm" onClick={() => handleClaimSwap(sw.id)}>
+                              Pick Up Shift
+                            </button>
+                            {sw.requesterId === currentUserId && (
+                              <button className="btn btn--icon btn--sm" onClick={() => handleCancelSwap(sw.id)} title="Cancel request">
+                                <X size={14} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {sw.status === 'claimed' && (
+                          <div className="swap-card__claimed">
+                            <div className="swap-card__claimed-by">
+                              <span className="swap-card__claimed-avatar" style={{ background: sw.claimer?.color || '#94a3b8' }}>
+                                {getInitials(sw.claimer?.name || '?')}
+                              </span>
+                              <span>{sw.claimer?.preferredName || sw.claimer?.name} wants to pick up</span>
+                            </div>
+                            <div className="swap-card__approval-btns">
+                              <button className="btn btn--success btn--sm" onClick={() => handleApproveSwap(sw.id)}>
+                                <CheckCircle size={14} /> Approve
+                              </button>
+                              <button className="btn btn--danger btn--sm" onClick={() => handleDenySwap(sw.id)}>
+                                <XCircle size={14} /> Deny
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <span className={`swap-status-badge swap-status-badge--${sw.status}`}>
+                        {sw.status === 'open' ? 'Open' : 'Awaiting Approval'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== SWAP REQUEST MODAL ===== */}
+      {showSwapRequestModal && (
+        <div className="modal-overlay" onClick={() => setShowSwapRequestModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">Post Swap Request</h2>
+              <button className="btn btn--icon" onClick={() => setShowSwapRequestModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handlePostSwap}>
+              <div className="modal__body">
+                <p className="form-hint" style={{ margin: '0 0 16px' }}>Select a shift you need covered. Other team members can pick it up, and a manager will approve.</p>
+                <div className="form-group">
+                  <label className="form-label">Select Shift</label>
+                  <select className="form-input" value={swapShiftId || ''} onChange={(e) => setSwapShiftId(e.target.value)} required>
+                    <option value="">Choose a shift...</option>
+                    {myUpcomingShifts.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.empName} - {format(parseISO(s.start), 'EEE, MMM d')} {formatTime(s.start)}-{formatTime(s.end)} ({s.position})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Reason</label>
+                  <textarea className="form-input form-textarea" value={swapReason} onChange={(e) => setSwapReason(e.target.value)} placeholder="Why do you need this shift covered?" rows={3} required />
+                </div>
+              </div>
+              <div className="modal__footer">
+                <div className="modal__footer-right">
+                  <button type="button" className="btn btn--secondary" onClick={() => setShowSwapRequestModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn--primary">Post Request</button>
                 </div>
               </div>
             </form>

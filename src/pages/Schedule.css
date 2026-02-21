@@ -537,6 +537,64 @@
   letter-spacing: 0.3px;
 }
 
+/* ===== SWAP BOARD ===== */
+.btn--swap-alert { position: relative; }
+.swap-count-badge {
+  background: #dc2626; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 10px; margin-left: 4px;
+}
+.swap-board-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+}
+.swap-board-desc { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.swap-list { display: flex; flex-direction: column; gap: 10px; }
+.swap-card {
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+  border-left: 4px solid var(--border); position: relative;
+}
+.swap-card--open { border-left-color: #f59e0b; }
+.swap-card--claimed { border-left-color: #2563eb; }
+.swap-card__shift-info { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.swap-card__avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 600; flex-shrink: 0; overflow: hidden;
+}
+.swap-card__details { flex: 1; }
+.swap-card__name { display: block; font-size: 14px; font-weight: 600; color: var(--text); }
+.swap-card__shift-time { display: block; font-size: 12px; color: var(--text-secondary); }
+.swap-card__position {
+  font-size: 11px; font-weight: 600; color: var(--primary);
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.swap-card__reason {
+  font-size: 13px; color: var(--text); margin-bottom: 10px;
+  padding: 8px 12px; background: var(--bg); border-radius: var(--radius);
+}
+.swap-card__reason-label {
+  font-weight: 600; color: var(--text-secondary); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.swap-card__actions { display: flex; gap: 8px; align-items: center; }
+.swap-card__claimed { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.swap-card__claimed-by { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.swap-card__claimed-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 9px; font-weight: 600;
+}
+.swap-card__approval-btns { display: flex; gap: 8px; }
+.btn--success { background: #059669; color: #fff; border-color: #059669; }
+.btn--success:hover { background: #047857; }
+.swap-status-badge {
+  position: absolute; top: 12px; right: 14px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px;
+}
+.swap-status-badge--open { background: #fef3c7; color: #92400e; }
+.swap-status-badge--claimed { background: #dbeafe; color: #1e40af; }
+
 /* Task template indicator on shift */
 .schedule-shift__tasks {
   font-size: 9px;
