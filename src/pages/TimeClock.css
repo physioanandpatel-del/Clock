@@ -147,3 +147,82 @@
   padding: 2px 8px;
   border-radius: 4px;
 }
+
+.timeclock-card__history-entry--flagged {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.geofence-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+  border: 1px solid;
+}
+
+.geofence-status--inside {
+  background: var(--success-light);
+  border-color: #86efac;
+  color: #166534;
+}
+
+.geofence-status--outside {
+  background: var(--danger-light);
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.geofence-status--unknown {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.geofence-status__icon {
+  flex-shrink: 0;
+}
+
+.geofence-status__info {
+  flex: 1;
+}
+
+.geofence-status__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.geofence-status__detail {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.geofence-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--warning-light);
+  color: #92400e;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.geofence-flag {
+  color: var(--danger);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.geofence-ok {
+  color: var(--success);
+  font-weight: 500;
+  font-size: 11px;
+}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval, parseISO, setDate, lastDayOfMonth } from 'date-fns';
 import { getInitials, getHoursWorked } from '../utils/helpers';
 import './Payroll.css';
 
@@ -21,8 +21,16 @@ export default function Payroll() {
       const start = startOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay });
       return { start, end: endOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay }) };
     } else if (period === 'biweekly') {
-      const weekStart = startOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay });
-      return { start: weekStart, end: addDays(weekStart, 13) };
+      const ws = startOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay });
+      return { start: ws, end: addDays(ws, 13) };
+    } else if (period === 'semimonthly') {
+      const day = currentDate.getDate();
+      const monthStart = startOfMonth(currentDate);
+      if (day <= 15) {
+        return { start: monthStart, end: setDate(monthStart, 15) };
+      } else {
+        return { start: setDate(monthStart, 16), end: lastDayOfMonth(monthStart) };
+      }
     } else {
       return { start: startOfMonth(currentDate), end: endOfMonth(currentDate) };
     }
@@ -36,18 +44,20 @@ export default function Payroll() {
     });
   }, [shifts, locationEmpIds, periodRange]);
 
+  const overtimeThreshold = period === 'biweekly' ? 80 : period === 'monthly' ? 160 : period === 'semimonthly' ? 80 : 40;
+
   const employeePayroll = useMemo(() => {
     return locationEmployees.map((emp) => {
       const empShifts = periodShifts.filter((s) => s.employeeId === emp.id);
       let totalHours = 0;
       empShifts.forEach((s) => { totalHours += getHoursWorked(s.start, s.end); });
-      const regularHours = Math.min(totalHours, 40 * (period === 'biweekly' ? 2 : period === 'monthly' ? 4 : 1));
+      const regularHours = Math.min(totalHours, overtimeThreshold);
       const overtimeHours = Math.max(0, totalHours - regularHours);
       const regularPay = regularHours * emp.hourlyRate;
       const overtimePay = overtimeHours * emp.hourlyRate * 1.5;
       return { ...emp, totalHours, regularHours, overtimeHours, regularPay, overtimePay, totalPay: regularPay + overtimePay, shiftCount: empShifts.length };
     }).filter((e) => e.shiftCount > 0).sort((a, b) => b.totalPay - a.totalPay);
-  }, [locationEmployees, periodShifts, period]);
+  }, [locationEmployees, periodShifts, overtimeThreshold]);
 
   const totals = useMemo(() => {
     let hours = 0, pay = 0;
@@ -58,7 +68,18 @@ export default function Payroll() {
   function navigate(dir) {
     if (period === 'weekly') setCurrentDate((d) => dir > 0 ? addWeeks(d, 1) : subWeeks(d, 1));
     else if (period === 'biweekly') setCurrentDate((d) => dir > 0 ? addWeeks(d, 2) : subWeeks(d, 2));
-    else setCurrentDate((d) => dir > 0 ? addMonths(d, 1) : subMonths(d, 1));
+    else if (period === 'semimonthly') {
+      setCurrentDate((d) => {
+        const day = d.getDate();
+        if (dir > 0) {
+          return day <= 15 ? setDate(d, 16) : setDate(addMonths(d, 1), 1);
+        } else {
+          return day > 15 ? setDate(d, 1) : setDate(subMonths(d, 1), 16);
+        }
+      });
+    } else {
+      setCurrentDate((d) => dir > 0 ? addMonths(d, 1) : subMonths(d, 1));
+    }
   }
 
   function handlePeriodChange(e) {
@@ -77,6 +98,7 @@ export default function Payroll() {
           <select className="form-input" value={period} onChange={handlePeriodChange}>
             <option value="weekly">Weekly</option>
             <option value="biweekly">Bi-Weekly</option>
+            <option value="semimonthly">Semi-Monthly</option>
             <option value="monthly">Monthly</option>
           </select>
         </div>

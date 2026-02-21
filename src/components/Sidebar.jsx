@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import './Sidebar.css';
@@ -14,6 +14,10 @@ const navItems = [
   { to: '/absences', icon: CalendarOff, label: 'Absences' },
   { to: '/payroll', icon: DollarSign, label: 'Payroll' },
   { to: '/labour', icon: TrendingUp, label: 'Labour' },
+  { type: 'divider' },
+  { to: '/newsfeed', icon: MessageSquare, label: 'Newsfeed' },
+  { to: '/tasks', icon: ListTodo, label: 'Tasks' },
+  { to: '/reports', icon: BarChart3, label: 'Reports' },
   { type: 'divider' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];

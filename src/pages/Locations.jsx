@@ -9,23 +9,23 @@ export default function Locations() {
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [formData, setFormData] = useState({ name: '', address: '', phone: '', targetLaborPercent: '30' });
+  const [formData, setFormData] = useState({ name: '', address: '', phone: '', targetLaborPercent: '30', lat: '', lng: '', geofenceRadius: '200' });
 
   function openNew() {
     setEditing(null);
-    setFormData({ name: '', address: '', phone: '', targetLaborPercent: '30' });
+    setFormData({ name: '', address: '', phone: '', targetLaborPercent: '30', lat: '', lng: '', geofenceRadius: '200' });
     setShowModal(true);
   }
 
   function openEdit(loc) {
     setEditing(loc);
-    setFormData({ name: loc.name, address: loc.address, phone: loc.phone, targetLaborPercent: String(loc.targetLaborPercent) });
+    setFormData({ name: loc.name, address: loc.address, phone: loc.phone, targetLaborPercent: String(loc.targetLaborPercent), lat: loc.lat ? String(loc.lat) : '', lng: loc.lng ? String(loc.lng) : '', geofenceRadius: String(loc.geofenceRadius || 200) });
     setShowModal(true);
   }
 
   function handleSubmit(e) {
     e.preventDefault();
-    const payload = { ...formData, targetLaborPercent: Number(formData.targetLaborPercent) || 30 };
+    const payload = { ...formData, targetLaborPercent: Number(formData.targetLaborPercent) || 30, lat: formData.lat ? Number(formData.lat) : null, lng: formData.lng ? Number(formData.lng) : null, geofenceRadius: Number(formData.geofenceRadius) || 200 };
     if (editing) {
       dispatch({ type: 'UPDATE_LOCATION', payload: { ...payload, id: editing.id } });
     } else {
@@ -80,6 +80,7 @@ export default function Locations() {
                 <div className="location-card__stats">
                   <span>{empCount} employees</span>
                   <span>Target: {loc.targetLaborPercent}% labor</span>
+                  {loc.lat && loc.lng && <span>Geofence: {loc.geofenceRadius}m</span>}
                 </div>
                 {!isActive && (
                   <button className="btn btn--secondary location-card__switch" onClick={() => switchLocation(loc.id)}>
@@ -117,6 +118,24 @@ export default function Locations() {
                   <div className="form-group">
                     <label className="form-label">Target Labor %</label>
                     <input type="number" className="form-input" value={formData.targetLaborPercent} onChange={(e) => setFormData({ ...formData, targetLaborPercent: e.target.value })} placeholder="30" min="1" max="100" required />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: 8 }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Geofencing</label>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Set coordinates and radius to restrict clock-ins to this location area.</p>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Latitude</label>
+                    <input type="number" step="any" className="form-input" value={formData.lat} onChange={(e) => setFormData({ ...formData, lat: e.target.value })} placeholder="43.6532" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Longitude</label>
+                    <input type="number" step="any" className="form-input" value={formData.lng} onChange={(e) => setFormData({ ...formData, lng: e.target.value })} placeholder="-79.3832" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Radius (m)</label>
+                    <input type="number" className="form-input" value={formData.geofenceRadius} onChange={(e) => setFormData({ ...formData, geofenceRadius: e.target.value })} placeholder="200" min="10" />
                   </div>
                 </div>
               </div>

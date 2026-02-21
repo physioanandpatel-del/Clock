@@ -1,0 +1,103 @@
+.tasks-page { max-width: 900px; }
+
+.tasks-summary {
+  display: flex; gap: 12px; margin-bottom: 20px;
+}
+
+.task-count {
+  flex: 1; padding: 16px; border-radius: var(--radius-lg);
+  text-align: center; cursor: pointer; transition: all 0.15s;
+  border: 2px solid transparent;
+}
+
+.task-count:hover { opacity: 0.85; }
+.task-count--pending { background: var(--warning-light); color: #92400e; }
+.task-count--progress { background: var(--primary-light); color: var(--primary); }
+.task-count--done { background: var(--success-light); color: #166534; }
+
+.task-count__num { display: block; font-size: 28px; font-weight: 700; }
+.task-count__label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+.tasks-list { display: flex; flex-direction: column; gap: 10px; }
+
+.task-card {
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--border); overflow: hidden;
+}
+
+.task-card--pending { border-left-color: var(--warning); }
+.task-card--in_progress { border-left-color: var(--primary); }
+.task-card--completed { border-left-color: var(--success); }
+
+.task-card__header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px 0;
+}
+
+.task-card__title-row { display: flex; align-items: center; gap: 10px; flex: 1; }
+
+.task-status-select {
+  padding: 2px 6px; font-size: 11px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg);
+  font-weight: 600; text-transform: uppercase; cursor: pointer;
+}
+
+.task-card__title { font-size: 15px; font-weight: 600; color: var(--text); margin: 0; }
+.task-card__title--done { text-decoration: line-through; color: var(--text-light); }
+
+.task-card__meta {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 16px; font-size: 12px; color: var(--text-secondary);
+}
+
+.task-assignee {
+  display: flex; align-items: center; gap: 6px; font-weight: 500;
+}
+
+.task-assignee__avatar {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 8px; font-weight: 600;
+}
+
+.task-unassigned { color: var(--text-light); font-style: italic; }
+.task-due { color: var(--text-secondary); }
+.task-progress { font-weight: 600; }
+
+.task-card__progress-bar {
+  height: 3px; background: var(--bg); margin: 0 16px;
+}
+
+.task-progress-fill {
+  height: 100%; background: var(--success); border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.task-card__subtasks { padding: 8px 16px 14px; }
+
+.subtask {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; font-size: 13px; color: var(--text); cursor: pointer;
+}
+
+.subtask--done { color: var(--text-light); text-decoration: line-through; }
+
+.subtask__check {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--text-secondary); display: flex;
+}
+
+.subtask--done .subtask__check { color: var(--success); }
+
+.subtask-add {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 6px; color: var(--text-light);
+}
+
+.subtask-add input {
+  border: none; background: none; font-size: 13px; outline: none;
+  color: var(--text); font-family: inherit; flex: 1;
+}
+
+.subtask-add input::placeholder { color: var(--text-light); }

@@ -8,6 +8,9 @@ import Locations from './pages/Locations'
 import Absences from './pages/Absences'
 import Payroll from './pages/Payroll'
 import Labour from './pages/Labour'
+import Newsfeed from './pages/Newsfeed'
+import Tasks from './pages/Tasks'
+import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import './App.css'
 
@@ -25,6 +28,9 @@ function App() {
           <Route path="/absences" element={<Absences />} />
           <Route path="/payroll" element={<Payroll />} />
           <Route path="/labour" element={<Labour />} />
+          <Route path="/newsfeed" element={<Newsfeed />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>
