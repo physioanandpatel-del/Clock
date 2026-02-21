@@ -35,8 +35,8 @@ function loadState() {
       if (!data.tasks) data.tasks = [];
       if (!data.currentUserId) data.currentUserId = data.employees?.[0]?.id || '1';
       if (!data.accessLevels) data.accessLevels = ACCESS_LEVELS;
-      if (!data.groups) data.groups = ['Front of House', 'Back of House', 'Management'];
-      // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel + Sling fields
+      if (!data.groups) data.groups = ['Front of House', 'Back of House', 'Management', 'Training', 'Opening Crew', 'Closing Crew'];
+      // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel + Sling fields + enriched fields
       data.employees = data.employees.map((e) => ({
         ...e,
         locationIds: e.locationIds || (e.locationId ? [e.locationId] : [data.currentLocationId]),
@@ -56,6 +56,18 @@ function loadState() {
         managerIds: e.managerIds || [],
         payType: e.payType || 'hourly',
         wages: e.wages || (e.hourlyRate ? (e.roles?.map((r) => ({ position: r, rate: e.hourlyRate, effectiveDate: e.hireDate || '2024-01-01' })) || [{ position: 'General', rate: e.hourlyRate, effectiveDate: '2024-01-01' }]) : []),
+        // Enriched fields
+        employmentType: e.employmentType || 'full_time',
+        department: e.department || '',
+        status: e.status || 'active',
+        address: e.address || { street: '', city: '', province: '', postalCode: '' },
+        skills: e.skills || [],
+        certifications: e.certifications || [],
+        documents: e.documents || [],
+        notes: e.notes || '',
+        performanceRating: e.performanceRating || null,
+        overtimeRate: e.overtimeRate || 1.5,
+        availability: e.availability || {},
       }));
       // Migrate shifts: normalize status to 'draft' or 'published'
       data.shifts = (data.shifts || []).map((s) => ({
@@ -145,6 +157,17 @@ function reducer(state, action) {
         managerIds: action.payload.managerIds || [],
         payType: action.payload.payType || 'hourly',
         wages: action.payload.wages || [],
+        employmentType: action.payload.employmentType || 'full_time',
+        department: action.payload.department || '',
+        status: action.payload.status || 'active',
+        address: action.payload.address || { street: '', city: '', province: '', postalCode: '' },
+        skills: action.payload.skills || [],
+        certifications: action.payload.certifications || [],
+        documents: action.payload.documents || [],
+        notes: action.payload.notes || '',
+        performanceRating: action.payload.performanceRating || null,
+        overtimeRate: action.payload.overtimeRate || 1.5,
+        availability: action.payload.availability || {},
       };
       return { ...state, employees: [...state.employees, employee] };
     }
