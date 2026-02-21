@@ -74,6 +74,82 @@
   background: var(--bg);
 }
 
+.btn--sm {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.btn--publish {
+  background: #059669;
+  color: #fff;
+  border-color: #059669;
+}
+
+.btn--publish:hover {
+  background: #047857;
+}
+
+/* Publish Bar */
+.publish-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.publish-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.publish-bar__stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.publish-bar__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.publish-bar__badge--draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.publish-bar__badge--published {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.publish-bar__copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 500;
+  animation: fadeIn 0.2s;
+}
+
+.publish-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Schedule Grid */
 .schedule-grid-wrapper {
   overflow-x: auto;
@@ -135,7 +211,7 @@
 }
 
 .schedule-grid__body {
-  max-height: calc(100vh - 240px);
+  max-height: calc(100vh - 280px);
   overflow-y: auto;
 }
 
@@ -194,7 +270,7 @@
   border-left: 1px solid var(--border);
   min-height: 70px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.15s;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -212,6 +288,13 @@
   background: #dbeafe;
 }
 
+/* Drag over state */
+.schedule-grid__cell--drag-over {
+  background: #dbeafe;
+  outline: 2px dashed var(--primary);
+  outline-offset: -2px;
+}
+
 .schedule-grid__empty {
   display: flex;
   align-items: center;
@@ -226,18 +309,86 @@
   opacity: 1;
 }
 
+/* Shift card */
 .schedule-shift {
   background: #f0f4ff;
   border-left: 3px solid var(--primary);
   border-radius: 4px;
   padding: 6px 8px;
-  cursor: pointer;
+  cursor: grab;
   transition: all 0.15s;
+  position: relative;
+}
+
+.schedule-shift:active {
+  cursor: grabbing;
 }
 
 .schedule-shift:hover {
   background: #dbeafe;
   transform: scale(1.02);
+}
+
+.schedule-shift--draft {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+}
+
+.schedule-shift--draft:hover {
+  background: #fef3c7;
+}
+
+.schedule-shift--published {
+  background: #f0fdf4;
+}
+
+.schedule-shift--published:hover {
+  background: #dcfce7;
+}
+
+.schedule-shift--dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+}
+
+.schedule-shift__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.schedule-shift__grip {
+  color: var(--text-light);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.schedule-shift:hover .schedule-shift__grip {
+  opacity: 1;
+}
+
+.schedule-shift__copy-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-light);
+  border-radius: 3px;
+  opacity: 0;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.schedule-shift:hover .schedule-shift__copy-btn {
+  opacity: 1;
+}
+
+.schedule-shift__copy-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--primary);
 }
 
 .schedule-shift__time {
@@ -252,6 +403,59 @@
   font-size: 10px;
   color: var(--text-secondary);
   margin-top: 1px;
+}
+
+.schedule-shift__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #059669;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Copy Toast */
+.copy-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  animation: toastSlide 0.3s ease;
+}
+
+@keyframes toastSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal small variant */
+.modal--sm {
+  max-width: 420px;
 }
 
 /* Modal */

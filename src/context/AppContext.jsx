@@ -86,13 +86,25 @@ function reducer(state, action) {
 
     // Shift
     case 'ADD_SHIFT': {
-      const shift = { ...action.payload, id: generateId(), status: 'scheduled' };
+      const shift = { ...action.payload, id: generateId(), status: action.payload.status || 'draft' };
       return { ...state, shifts: [...state.shifts, shift] };
     }
     case 'UPDATE_SHIFT':
       return { ...state, shifts: state.shifts.map((s) => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
     case 'DELETE_SHIFT':
       return { ...state, shifts: state.shifts.filter((s) => s.id !== action.payload) };
+    case 'BULK_ADD_SHIFTS': {
+      const newShifts = action.payload.map((s) => ({ ...s, id: generateId(), status: s.status || 'draft' }));
+      return { ...state, shifts: [...state.shifts, ...newShifts] };
+    }
+    case 'PUBLISH_SHIFTS': {
+      const ids = action.payload; // array of shift IDs
+      return { ...state, shifts: state.shifts.map((s) => ids.includes(s.id) ? { ...s, status: 'published' } : s) };
+    }
+    case 'UNPUBLISH_SHIFTS': {
+      const ids = action.payload;
+      return { ...state, shifts: state.shifts.map((s) => ids.includes(s.id) ? { ...s, status: 'draft' } : s) };
+    }
 
     // Time Clock
     case 'CLOCK_IN': {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   format,
@@ -12,7 +12,18 @@ import {
   addWeeks,
   subWeeks,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  X,
+  Trash2,
+  Copy,
+  Clipboard,
+  Send,
+  GripVertical,
+  Check,
+} from 'lucide-react';
 import { formatTime, getInitials } from '../utils/helpers';
 import './Schedule.css';
 
@@ -33,6 +44,17 @@ export default function Schedule() {
     notes: '',
   });
 
+  // Drag and drop state
+  const [draggedShift, setDraggedShift] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null);
+
+  // Copy/paste state
+  const [copiedShift, setCopiedShift] = useState(null);
+  const [showCopyToast, setShowCopyToast] = useState(false);
+
+  // Publish state
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -47,6 +69,21 @@ export default function Schedule() {
       ),
     }));
   }, [locationEmployees, shifts, weekDays]);
+
+  // Get all shifts for the current week
+  const weekShifts = useMemo(() => {
+    const empIds = locationEmployees.map((e) => e.id);
+    return shifts.filter((s) => {
+      if (!empIds.includes(s.employeeId)) return false;
+      const shiftDate = parseISO(s.start);
+      return weekDays.some((d) => isSameDay(shiftDate, d));
+    });
+  }, [shifts, locationEmployees, weekDays]);
+
+  const draftCount = weekShifts.filter((s) => s.status !== 'published').length;
+  const publishedCount = weekShifts.filter((s) => s.status === 'published').length;
+
+  // --- Shift CRUD ---
 
   function openNewShift(employeeId, dayIndex) {
     const day = weekDays[dayIndex];
@@ -108,6 +145,121 @@ export default function Schedule() {
     }
   }
 
+  // --- Drag and Drop ---
+
+  function handleDragStart(e, shift) {
+    setDraggedShift(shift);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', shift.id);
+    // Make the drag image slightly transparent
+    if (e.target) {
+      e.target.style.opacity = '0.5';
+    }
+  }
+
+  function handleDragEnd(e) {
+    if (e.target) {
+      e.target.style.opacity = '1';
+    }
+    setDraggedShift(null);
+    setDragOverCell(null);
+  }
+
+  function handleDragOver(e, employeeId, dayIdx) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const cellKey = `${employeeId}-${dayIdx}`;
+    if (dragOverCell !== cellKey) {
+      setDragOverCell(cellKey);
+    }
+  }
+
+  function handleDragLeave(e) {
+    // Only clear if leaving the cell entirely
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverCell(null);
+    }
+  }
+
+  function handleDrop(e, targetEmployeeId, targetDayIdx) {
+    e.preventDefault();
+    setDragOverCell(null);
+
+    if (!draggedShift) return;
+
+    const targetDay = weekDays[targetDayIdx];
+    const origStart = parseISO(draggedShift.start);
+    const origEnd = parseISO(draggedShift.end);
+
+    // Reconstruct times on the new date
+    const newStart = setMinutes(setHours(targetDay, origStart.getHours()), origStart.getMinutes());
+    const newEnd = setMinutes(setHours(targetDay, origEnd.getHours()), origEnd.getMinutes());
+
+    dispatch({
+      type: 'UPDATE_SHIFT',
+      payload: {
+        id: draggedShift.id,
+        employeeId: targetEmployeeId,
+        start: newStart.toISOString(),
+        end: newEnd.toISOString(),
+      },
+    });
+
+    setDraggedShift(null);
+  }
+
+  // --- Copy / Paste ---
+
+  function handleCopyShift(e, shift) {
+    e.stopPropagation();
+    setCopiedShift(shift);
+    setShowCopyToast(true);
+    setTimeout(() => setShowCopyToast(false), 2000);
+  }
+
+  function handlePasteShift(employeeId, dayIdx) {
+    if (!copiedShift) return;
+
+    const targetDay = weekDays[dayIdx];
+    const origStart = parseISO(copiedShift.start);
+    const origEnd = parseISO(copiedShift.end);
+
+    const newStart = setMinutes(setHours(targetDay, origStart.getHours()), origStart.getMinutes());
+    const newEnd = setMinutes(setHours(targetDay, origEnd.getHours()), origEnd.getMinutes());
+
+    dispatch({
+      type: 'ADD_SHIFT',
+      payload: {
+        employeeId,
+        start: newStart.toISOString(),
+        end: newEnd.toISOString(),
+        position: copiedShift.position,
+        notes: copiedShift.notes || '',
+      },
+    });
+  }
+
+  // --- Publish ---
+
+  function handlePublishWeek() {
+    const draftIds = weekShifts
+      .filter((s) => s.status !== 'published')
+      .map((s) => s.id);
+    if (draftIds.length > 0) {
+      dispatch({ type: 'PUBLISH_SHIFTS', payload: draftIds });
+    }
+    setShowPublishConfirm(false);
+  }
+
+  function handleUnpublishWeek() {
+    const publishedIds = weekShifts
+      .filter((s) => s.status === 'published')
+      .map((s) => s.id);
+    if (publishedIds.length > 0) {
+      dispatch({ type: 'UNPUBLISH_SHIFTS', payload: publishedIds });
+    }
+  }
+
   return (
     <div className="schedule-page">
       <div className="page-header">
@@ -149,6 +301,44 @@ export default function Schedule() {
         </div>
       </div>
 
+      {/* Publish Bar */}
+      <div className="publish-bar">
+        <div className="publish-bar__info">
+          <div className="publish-bar__stats">
+            {draftCount > 0 && (
+              <span className="publish-bar__badge publish-bar__badge--draft">
+                {draftCount} draft{draftCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            {publishedCount > 0 && (
+              <span className="publish-bar__badge publish-bar__badge--published">
+                <Check size={12} /> {publishedCount} published
+              </span>
+            )}
+          </div>
+          {copiedShift && (
+            <span className="publish-bar__copied">
+              <Clipboard size={12} /> Shift copied — click empty cell to paste
+            </span>
+          )}
+        </div>
+        <div className="publish-bar__actions">
+          {publishedCount > 0 && (
+            <button className="btn btn--secondary btn--sm" onClick={handleUnpublishWeek}>
+              Unpublish
+            </button>
+          )}
+          {draftCount > 0 && (
+            <button
+              className="btn btn--publish btn--sm"
+              onClick={() => setShowPublishConfirm(true)}
+            >
+              <Send size={14} /> Publish {draftCount} Shift{draftCount !== 1 ? 's' : ''}
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="schedule-grid-wrapper">
         <div className="schedule-grid">
           <div className="schedule-grid__header">
@@ -176,43 +366,115 @@ export default function Schedule() {
                     <div className="schedule-grid__emp-role">{employee.role}</div>
                   </div>
                 </div>
-                {empShifts.map((dayShifts, dayIdx) => (
-                  <div
-                    key={dayIdx}
-                    className={`schedule-grid__cell ${isSameDay(weekDays[dayIdx], new Date()) ? 'schedule-grid__cell--today' : ''}`}
-                    onClick={() => {
-                      if (dayShifts.length === 0) openNewShift(employee.id, dayIdx);
-                    }}
-                  >
-                    {dayShifts.map((s) => (
-                      <div
-                        key={s.id}
-                        className="schedule-shift"
-                        style={{ borderLeftColor: employee.color }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditShift(s);
-                        }}
-                      >
-                        <span className="schedule-shift__time">
-                          {formatTime(s.start)} - {formatTime(s.end)}
-                        </span>
-                        <span className="schedule-shift__pos">{s.position}</span>
-                      </div>
-                    ))}
-                    {dayShifts.length === 0 && (
-                      <div className="schedule-grid__empty">
-                        <Plus size={14} />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {empShifts.map((dayShifts, dayIdx) => {
+                  const cellKey = `${employee.id}-${dayIdx}`;
+                  const isDragOver = dragOverCell === cellKey;
+                  return (
+                    <div
+                      key={dayIdx}
+                      className={`schedule-grid__cell ${isSameDay(weekDays[dayIdx], new Date()) ? 'schedule-grid__cell--today' : ''} ${isDragOver ? 'schedule-grid__cell--drag-over' : ''}`}
+                      onClick={() => {
+                        if (copiedShift && dayShifts.length === 0) {
+                          handlePasteShift(employee.id, dayIdx);
+                        } else if (dayShifts.length === 0) {
+                          openNewShift(employee.id, dayIdx);
+                        }
+                      }}
+                      onDragOver={(e) => handleDragOver(e, employee.id, dayIdx)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, employee.id, dayIdx)}
+                    >
+                      {dayShifts.map((s) => (
+                        <div
+                          key={s.id}
+                          className={`schedule-shift ${s.status === 'published' ? 'schedule-shift--published' : 'schedule-shift--draft'} ${draggedShift?.id === s.id ? 'schedule-shift--dragging' : ''}`}
+                          style={{ borderLeftColor: employee.color }}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, s)}
+                          onDragEnd={handleDragEnd}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditShift(s);
+                          }}
+                        >
+                          <div className="schedule-shift__header">
+                            <GripVertical size={12} className="schedule-shift__grip" />
+                            <button
+                              className="schedule-shift__copy-btn"
+                              title="Copy shift"
+                              onClick={(e) => handleCopyShift(e, s)}
+                            >
+                              <Copy size={11} />
+                            </button>
+                          </div>
+                          <span className="schedule-shift__time">
+                            {formatTime(s.start)} - {formatTime(s.end)}
+                          </span>
+                          <span className="schedule-shift__pos">{s.position}</span>
+                          {s.status === 'published' && (
+                            <span className="schedule-shift__status">
+                              <Check size={10} /> Published
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {dayShifts.length === 0 && (
+                        <div className="schedule-grid__empty">
+                          {copiedShift ? (
+                            <Clipboard size={14} />
+                          ) : (
+                            <Plus size={14} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
         </div>
       </div>
 
+      {/* Copy Toast */}
+      {showCopyToast && (
+        <div className="copy-toast">
+          <Check size={14} /> Shift copied! Click an empty cell to paste.
+        </div>
+      )}
+
+      {/* Publish Confirmation Modal */}
+      {showPublishConfirm && (
+        <div className="modal-overlay" onClick={() => setShowPublishConfirm(false)}>
+          <div className="modal modal--sm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">Publish Shifts</h2>
+              <button className="btn btn--icon" onClick={() => setShowPublishConfirm(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal__body">
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                You are about to publish <strong>{draftCount}</strong> draft shift{draftCount !== 1 ? 's' : ''} for the week of{' '}
+                <strong>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}</strong>.
+                Published shifts will be visible to all employees.
+              </p>
+            </div>
+            <div className="modal__footer">
+              <div className="modal__footer-right">
+                <button className="btn btn--secondary" onClick={() => setShowPublishConfirm(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn--publish" onClick={handlePublishWeek}>
+                  <Send size={14} /> Publish All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shift Form Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
