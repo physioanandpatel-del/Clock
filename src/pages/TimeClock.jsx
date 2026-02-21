@@ -17,7 +17,7 @@ function getDistance(lat1, lng1, lat2, lng2) {
 export default function TimeClock() {
   const { state, dispatch } = useApp();
   const { employees, timeEntries, currentLocationId, locations } = state;
-  const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
+  const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
   const currentLocation = locations.find((l) => l.id === currentLocationId);
 
   const [search, setSearch] = useState('');
@@ -139,7 +139,7 @@ export default function TimeClock() {
               <div className="timeclock-card__avatar" style={{ background: emp.color }}>{getInitials(emp.name)}</div>
               <div className="timeclock-card__info">
                 <div className="timeclock-card__name">{emp.name}</div>
-                <div className="timeclock-card__role">{emp.role}</div>
+                <div className="timeclock-card__role">{(emp.roles || [emp.role]).join(', ')}</div>
                 {emp.isClockedIn && (
                   <div className="timeclock-card__time">
                     Clocked in at {formatTime(emp.activeEntry.clockIn)}

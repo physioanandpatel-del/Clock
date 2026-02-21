@@ -59,7 +59,7 @@ export default function Locations() {
 
       <div className="locations-grid">
         {locations.map((loc) => {
-          const empCount = employees.filter((e) => e.locationId === loc.id).length;
+          const empCount = employees.filter((e) => (e.locationIds || [e.locationId]).includes(loc.id)).length;
           const isActive = loc.id === currentLocationId;
           return (
             <div key={loc.id} className={`location-card ${isActive ? 'location-card--active' : ''}`}>

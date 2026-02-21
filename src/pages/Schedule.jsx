@@ -34,7 +34,7 @@ import './Schedule.css';
 export default function Schedule() {
   const { state, dispatch } = useApp();
   const { employees, shifts, positions, currentLocationId, locations, salesEntries } = state;
-  const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
+  const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
   const currentLocation = locations.find((l) => l.id === currentLocationId);
 
   // Location labor budget settings
@@ -169,7 +169,7 @@ export default function Schedule() {
       date: format(day, 'yyyy-MM-dd'),
       startTime: '09:00',
       endTime: '17:00',
-      position: locationEmployees.find((e) => e.id === employeeId)?.role || positions[0] || '',
+      position: (locationEmployees.find((e) => e.id === employeeId)?.roles || [locationEmployees.find((e) => e.id === employeeId)?.role])[0] || positions[0] || '',
       notes: '',
     });
     setShowModal(true);
@@ -527,7 +527,7 @@ export default function Schedule() {
                   </div>
                   <div>
                     <div className="schedule-grid__emp-name">{employee.name}</div>
-                    <div className="schedule-grid__emp-role">{employee.role}</div>
+                    <div className="schedule-grid__emp-role">{(employee.roles || [employee.role]).join(', ')}</div>
                   </div>
                 </div>
                 {empShifts.map((dayShifts, dayIdx) => {

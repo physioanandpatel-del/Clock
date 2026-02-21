@@ -247,3 +247,95 @@
   color: var(--text-secondary);
   padding: 2px 0;
 }
+
+/* Chip Select (multi-select toggle buttons) */
+.chip-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-white);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.chip--active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.chip--active:hover {
+  background: var(--primary-dark);
+  color: #fff;
+}
+
+/* Access Badge */
+.employee-card__badges {
+  margin-top: 4px;
+}
+
+.access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.access-badge--master_admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.access-badge--location_admin {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.access-badge--manager {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.access-badge--employee {
+  background: var(--bg);
+  color: var(--text-secondary);
+}
+
+/* Employee Location Tags */
+.employee-card__locations {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Form Hint */
+.form-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}

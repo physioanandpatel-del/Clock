@@ -6,6 +6,19 @@ const AppContext = createContext(null);
 
 const STORAGE_KEY = 'clock-app-data';
 
+// Access level hierarchy (higher index = more access)
+export const ACCESS_LEVELS = ['employee', 'manager', 'location_admin', 'master_admin'];
+export const ACCESS_LABELS = {
+  master_admin: 'Master Admin',
+  location_admin: 'Location Admin',
+  manager: 'Manager',
+  employee: 'Employee',
+};
+
+export function hasAccess(userLevel, requiredLevel) {
+  return ACCESS_LEVELS.indexOf(userLevel) >= ACCESS_LEVELS.indexOf(requiredLevel);
+}
+
 function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -20,8 +33,14 @@ function loadState() {
       if (!data.payrollSettings) data.payrollSettings = { period: 'biweekly', startDay: 1 };
       if (!data.posts) data.posts = [];
       if (!data.tasks) data.tasks = [];
+      if (!data.currentUserId) data.currentUserId = data.employees?.[0]?.id || '1';
+      if (!data.accessLevels) data.accessLevels = ACCESS_LEVELS;
+      // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel
       data.employees = data.employees.map((e) => ({
         ...e,
+        locationIds: e.locationIds || (e.locationId ? [e.locationId] : [data.currentLocationId]),
+        roles: e.roles || (e.role ? [e.role] : ['Server']),
+        accessLevel: e.accessLevel || 'employee',
         bankInfo: e.bankInfo || null,
         ptoBalance: e.ptoBalance || { sick: 10, vacation: 10, personal: 3 },
       }));
@@ -64,13 +83,23 @@ function reducer(state, action) {
       if (state.locations.length <= 1) return state;
       const newLocs = state.locations.filter((l) => l.id !== action.payload);
       const newCurrentId = state.currentLocationId === action.payload ? newLocs[0].id : state.currentLocationId;
-      const locEmpIds = state.employees.filter((e) => e.locationId === action.payload).map((e) => e.id);
+      // Find employees who ONLY belong to this location
+      const onlyHereEmpIds = state.employees
+        .filter((e) => e.locationIds.length === 1 && e.locationIds[0] === action.payload)
+        .map((e) => e.id);
+      // Remove location from multi-location employees
+      const updatedEmployees = state.employees
+        .filter((e) => !onlyHereEmpIds.includes(e.id))
+        .map((e) => ({
+          ...e,
+          locationIds: e.locationIds.filter((lid) => lid !== action.payload),
+        }));
       return {
         ...state, locations: newLocs, currentLocationId: newCurrentId,
-        employees: state.employees.filter((e) => e.locationId !== action.payload),
-        shifts: state.shifts.filter((s) => !locEmpIds.includes(s.employeeId)),
-        timeEntries: state.timeEntries.filter((t) => !locEmpIds.includes(t.employeeId)),
-        absences: state.absences.filter((a) => !locEmpIds.includes(a.employeeId)),
+        employees: updatedEmployees,
+        shifts: state.shifts.filter((s) => !onlyHereEmpIds.includes(s.employeeId)),
+        timeEntries: state.timeEntries.filter((t) => !onlyHereEmpIds.includes(t.employeeId)),
+        absences: state.absences.filter((a) => !onlyHereEmpIds.includes(a.employeeId)),
         salesEntries: state.salesEntries.filter((s) => s.locationId !== action.payload),
         tasks: state.tasks.filter((t) => t.locationId !== action.payload),
       };
@@ -78,13 +107,25 @@ function reducer(state, action) {
 
     // Employee
     case 'ADD_EMPLOYEE': {
-      const employee = { ...action.payload, id: generateId(), locationId: action.payload.locationId || state.currentLocationId, bankInfo: action.payload.bankInfo || null, ptoBalance: action.payload.ptoBalance || { sick: 10, vacation: 10, personal: 3 } };
+      const employee = {
+        ...action.payload,
+        id: generateId(),
+        locationIds: action.payload.locationIds || [state.currentLocationId],
+        roles: action.payload.roles || ['Server'],
+        accessLevel: action.payload.accessLevel || 'employee',
+        bankInfo: action.payload.bankInfo || null,
+        ptoBalance: action.payload.ptoBalance || { sick: 10, vacation: 10, personal: 3 },
+      };
       return { ...state, employees: [...state.employees, employee] };
     }
     case 'UPDATE_EMPLOYEE':
       return { ...state, employees: state.employees.map((e) => e.id === action.payload.id ? { ...e, ...action.payload } : e) };
     case 'DELETE_EMPLOYEE':
       return { ...state, employees: state.employees.filter((e) => e.id !== action.payload), shifts: state.shifts.filter((s) => s.employeeId !== action.payload), timeEntries: state.timeEntries.filter((t) => t.employeeId !== action.payload), absences: state.absences.filter((a) => a.employeeId !== action.payload) };
+
+    // User switching
+    case 'SET_CURRENT_USER':
+      return { ...state, currentUserId: action.payload };
 
     // Shift
     case 'ADD_SHIFT': {
@@ -100,7 +141,7 @@ function reducer(state, action) {
       return { ...state, shifts: [...state.shifts, ...newShifts] };
     }
     case 'PUBLISH_SHIFTS': {
-      const ids = action.payload; // array of shift IDs
+      const ids = action.payload;
       return { ...state, shifts: state.shifts.map((s) => ids.includes(s.id) ? { ...s, status: 'published' } : s) };
     }
     case 'UNPUBLISH_SHIFTS': {

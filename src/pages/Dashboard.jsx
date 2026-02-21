@@ -10,7 +10,7 @@ export default function Dashboard() {
   const { employees, shifts, timeEntries, locations, currentLocationId, salesEntries, absences } = state;
 
   const currentLocation = locations.find((l) => l.id === currentLocationId);
-  const locationEmployees = useMemo(() => employees.filter((e) => e.locationId === currentLocationId), [employees, currentLocationId]);
+  const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
 
   const today = new Date();

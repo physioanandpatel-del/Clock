@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
-import { Plus, Search, X, Edit2, Trash2, Mail, Phone, CreditCard } from 'lucide-react';
+import { useApp, ACCESS_LABELS } from '../context/AppContext';
+import { Plus, Search, X, Edit2, Trash2, Mail, Phone, CreditCard, MapPin, Shield } from 'lucide-react';
 import { getInitials } from '../utils/helpers';
 import './Employees.css';
 
 const COLORS = ['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c', '#0891b2', '#4f46e5', '#be185d'];
+const ACCESS_OPTIONS = ['employee', 'manager', 'location_admin', 'master_admin'];
 
 export default function Employees() {
   const { state, dispatch } = useApp();
-  const { employees, positions, currentLocationId, absences } = state;
-  const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
+  const { employees, positions, currentLocationId, absences, locations } = state;
+  const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
 
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
@@ -17,7 +18,10 @@ export default function Employees() {
   const [showBankModal, setShowBankModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedEmp, setSelectedEmp] = useState(null);
-  const [formData, setFormData] = useState({ name: '', role: '', email: '', phone: '', hourlyRate: '', color: COLORS[0] });
+  const [formData, setFormData] = useState({
+    name: '', roles: [], email: '', phone: '', hourlyRate: '', color: COLORS[0],
+    locationIds: [], accessLevel: 'employee',
+  });
   const [bankData, setBankData] = useState({ bankName: '', transitNumber: '', accountNumber: '' });
 
   const ptoUsed = useMemo(() => {
@@ -37,20 +41,32 @@ export default function Employees() {
   const filtered = useMemo(() => {
     return locationEmployees.filter((emp) => {
       const matchSearch = emp.name.toLowerCase().includes(search.toLowerCase()) || emp.email.toLowerCase().includes(search.toLowerCase());
-      const matchRole = !filterRole || emp.role === filterRole;
+      const empRoles = emp.roles || [emp.role];
+      const matchRole = !filterRole || empRoles.includes(filterRole);
       return matchSearch && matchRole;
     });
   }, [locationEmployees, search, filterRole]);
 
   function openNew() {
     setEditing(null);
-    setFormData({ name: '', role: positions[0] || '', email: '', phone: '', hourlyRate: '', color: COLORS[Math.floor(Math.random() * COLORS.length)] });
+    setFormData({
+      name: '', roles: [positions[0] || ''], email: '', phone: '', hourlyRate: '',
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      locationIds: [currentLocationId], accessLevel: 'employee',
+    });
     setShowModal(true);
   }
 
   function openEdit(emp) {
     setEditing(emp);
-    setFormData({ name: emp.name, role: emp.role, email: emp.email, phone: emp.phone, hourlyRate: String(emp.hourlyRate), color: emp.color });
+    setFormData({
+      name: emp.name,
+      roles: emp.roles || [emp.role],
+      email: emp.email, phone: emp.phone,
+      hourlyRate: String(emp.hourlyRate), color: emp.color,
+      locationIds: emp.locationIds || [emp.locationId],
+      accessLevel: emp.accessLevel || 'employee',
+    });
     setShowModal(true);
   }
 
@@ -60,9 +76,36 @@ export default function Employees() {
     setShowBankModal(true);
   }
 
+  function toggleRole(role) {
+    setFormData((prev) => {
+      const roles = prev.roles.includes(role)
+        ? prev.roles.filter((r) => r !== role)
+        : [...prev.roles, role];
+      return { ...prev, roles: roles.length > 0 ? roles : prev.roles };
+    });
+  }
+
+  function toggleLocation(locId) {
+    setFormData((prev) => {
+      const lids = prev.locationIds.includes(locId)
+        ? prev.locationIds.filter((l) => l !== locId)
+        : [...prev.locationIds, locId];
+      return { ...prev, locationIds: lids.length > 0 ? lids : prev.locationIds };
+    });
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
-    const payload = { ...formData, hourlyRate: Number(formData.hourlyRate) || 0 };
+    const payload = {
+      name: formData.name,
+      roles: formData.roles,
+      email: formData.email,
+      phone: formData.phone,
+      hourlyRate: Number(formData.hourlyRate) || 0,
+      color: formData.color,
+      locationIds: formData.locationIds,
+      accessLevel: formData.accessLevel,
+    };
     if (editing) {
       dispatch({ type: 'UPDATE_EMPLOYEE', payload: { ...payload, id: editing.id } });
     } else {
@@ -109,6 +152,9 @@ export default function Employees() {
         {filtered.map((emp) => {
           const used = ptoUsed[emp.id] || { sick: 0, vacation: 0, personal: 0 };
           const pto = emp.ptoBalance || { sick: 10, vacation: 10, personal: 3 };
+          const empRoles = emp.roles || [emp.role];
+          const empLocs = emp.locationIds || [emp.locationId];
+          const locNames = empLocs.map((lid) => locations.find((l) => l.id === lid)?.name).filter(Boolean);
           return (
             <div key={emp.id} className="employee-card">
               <div className="employee-card__header">
@@ -121,7 +167,17 @@ export default function Employees() {
               </div>
               <div className="employee-card__body">
                 <h3 className="employee-card__name">{emp.name}</h3>
-                <span className="employee-card__role">{emp.role}</span>
+                <span className="employee-card__role">{empRoles.join(', ')}</span>
+                <div className="employee-card__badges">
+                  <span className={`access-badge access-badge--${emp.accessLevel || 'employee'}`}>
+                    <Shield size={10} /> {ACCESS_LABELS[emp.accessLevel || 'employee']}
+                  </span>
+                </div>
+                {locNames.length > 1 && (
+                  <div className="employee-card__locations">
+                    <MapPin size={11} /> {locNames.join(', ')}
+                  </div>
+                )}
                 <div className="employee-card__details">
                   <div className="employee-card__detail"><Mail size={13} /><span>{emp.email}</span></div>
                   <div className="employee-card__detail"><Phone size={13} /><span>{emp.phone}</span></div>
@@ -148,7 +204,44 @@ export default function Employees() {
             <form onSubmit={handleSubmit}>
               <div className="modal__body">
                 <div className="form-group"><label className="form-label">Full Name</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="John Doe" required /></div>
-                <div className="form-group"><label className="form-label">Position</label><select className="form-input" value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} required>{positions.map((p) => <option key={p} value={p}>{p}</option>)}</select></div>
+
+                <div className="form-group">
+                  <label className="form-label">Positions (select multiple)</label>
+                  <div className="chip-select">
+                    {positions.map((p) => (
+                      <button key={p} type="button" className={`chip ${formData.roles.includes(p) ? 'chip--active' : ''}`} onClick={() => toggleRole(p)}>
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Locations (select multiple)</label>
+                  <div className="chip-select">
+                    {locations.map((loc) => (
+                      <button key={loc.id} type="button" className={`chip ${formData.locationIds.includes(loc.id) ? 'chip--active' : ''}`} onClick={() => toggleLocation(loc.id)}>
+                        <MapPin size={12} /> {loc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Access Level</label>
+                  <select className="form-input" value={formData.accessLevel} onChange={(e) => setFormData({ ...formData, accessLevel: e.target.value })}>
+                    {ACCESS_OPTIONS.map((level) => (
+                      <option key={level} value={level}>{ACCESS_LABELS[level]}</option>
+                    ))}
+                  </select>
+                  <span className="form-hint">
+                    {formData.accessLevel === 'master_admin' && 'Full access to all locations and settings'}
+                    {formData.accessLevel === 'location_admin' && 'Manage assigned locations, employees, schedules, and reports'}
+                    {formData.accessLevel === 'manager' && 'Create schedules, manage time clock, and view reports'}
+                    {formData.accessLevel === 'employee' && 'View own schedule, clock in/out, request absences'}
+                  </span>
+                </div>
+
                 <div className="form-row">
                   <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="john@example.com" required /></div>
                   <div className="form-group"><label className="form-label">Phone</label><input type="tel" className="form-input" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="555-0100" required /></div>

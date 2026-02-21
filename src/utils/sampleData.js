@@ -11,15 +11,17 @@ export function generateSampleData() {
     { id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, laborBudgetWarning: 28, laborBudgetMax: 33, lat: 43.6745, lng: -79.3882, geofenceRadius: 150 },
   ];
 
+  const accessLevels = ['master_admin', 'location_admin', 'manager', 'employee'];
+
   const employees = [
-    { id: '1', name: 'Sarah Johnson', role: 'Manager', email: 'sarah@clock.app', phone: '555-0101', color: COLORS[0], hourlyRate: 28, locationId: 'loc1', bankInfo: { bankName: 'TD Bank', transitNumber: '00412', accountNumber: '1234567' }, ptoBalance: { sick: 10, vacation: 15, personal: 5 } },
-    { id: '2', name: 'Mike Chen', role: 'Server', email: 'mike@clock.app', phone: '555-0102', color: COLORS[1], hourlyRate: 18, locationId: 'loc1', bankInfo: null, ptoBalance: { sick: 10, vacation: 10, personal: 3 } },
-    { id: '3', name: 'Emily Davis', role: 'Server', email: 'emily@clock.app', phone: '555-0103', color: COLORS[2], hourlyRate: 18, locationId: 'loc1', bankInfo: null, ptoBalance: { sick: 8, vacation: 10, personal: 3 } },
-    { id: '4', name: 'James Wilson', role: 'Cook', email: 'james@clock.app', phone: '555-0104', color: COLORS[3], hourlyRate: 22, locationId: 'loc1', bankInfo: { bankName: 'RBC', transitNumber: '00215', accountNumber: '9876543' }, ptoBalance: { sick: 10, vacation: 12, personal: 3 } },
-    { id: '5', name: 'Lisa Park', role: 'Bartender', email: 'lisa@clock.app', phone: '555-0105', color: COLORS[4], hourlyRate: 20, locationId: 'loc2', bankInfo: null, ptoBalance: { sick: 10, vacation: 10, personal: 3 } },
-    { id: '6', name: 'Tom Brown', role: 'Host', email: 'tom@clock.app', phone: '555-0106', color: COLORS[5], hourlyRate: 16, locationId: 'loc2', bankInfo: null, ptoBalance: { sick: 10, vacation: 8, personal: 3 } },
-    { id: '7', name: 'Anna Martinez', role: 'Server', email: 'anna@clock.app', phone: '555-0107', color: COLORS[6], hourlyRate: 18, locationId: 'loc2', bankInfo: null, ptoBalance: { sick: 10, vacation: 10, personal: 3 } },
-    { id: '8', name: 'David Lee', role: 'Cook', email: 'david@clock.app', phone: '555-0108', color: COLORS[7], hourlyRate: 22, locationId: 'loc2', bankInfo: null, ptoBalance: { sick: 10, vacation: 12, personal: 3 } },
+    { id: '1', name: 'Sarah Johnson', roles: ['Manager'], email: 'sarah@clock.app', phone: '555-0101', color: COLORS[0], hourlyRate: 28, locationIds: ['loc1', 'loc2'], accessLevel: 'master_admin', bankInfo: { bankName: 'TD Bank', transitNumber: '00412', accountNumber: '1234567' }, ptoBalance: { sick: 10, vacation: 15, personal: 5 } },
+    { id: '2', name: 'Mike Chen', roles: ['Server', 'Bartender'], email: 'mike@clock.app', phone: '555-0102', color: COLORS[1], hourlyRate: 18, locationIds: ['loc1'], accessLevel: 'employee', bankInfo: null, ptoBalance: { sick: 10, vacation: 10, personal: 3 } },
+    { id: '3', name: 'Emily Davis', roles: ['Server'], email: 'emily@clock.app', phone: '555-0103', color: COLORS[2], hourlyRate: 18, locationIds: ['loc1'], accessLevel: 'employee', bankInfo: null, ptoBalance: { sick: 8, vacation: 10, personal: 3 } },
+    { id: '4', name: 'James Wilson', roles: ['Cook'], email: 'james@clock.app', phone: '555-0104', color: COLORS[3], hourlyRate: 22, locationIds: ['loc1'], accessLevel: 'employee', bankInfo: { bankName: 'RBC', transitNumber: '00215', accountNumber: '9876543' }, ptoBalance: { sick: 10, vacation: 12, personal: 3 } },
+    { id: '5', name: 'Lisa Park', roles: ['Bartender', 'Server'], email: 'lisa@clock.app', phone: '555-0105', color: COLORS[4], hourlyRate: 20, locationIds: ['loc2'], accessLevel: 'location_admin', bankInfo: null, ptoBalance: { sick: 10, vacation: 10, personal: 3 } },
+    { id: '6', name: 'Tom Brown', roles: ['Host'], email: 'tom@clock.app', phone: '555-0106', color: COLORS[5], hourlyRate: 16, locationIds: ['loc2'], accessLevel: 'employee', bankInfo: null, ptoBalance: { sick: 10, vacation: 8, personal: 3 } },
+    { id: '7', name: 'Anna Martinez', roles: ['Server'], email: 'anna@clock.app', phone: '555-0107', color: COLORS[6], hourlyRate: 18, locationIds: ['loc2'], accessLevel: 'employee', bankInfo: null, ptoBalance: { sick: 10, vacation: 10, personal: 3 } },
+    { id: '8', name: 'David Lee', roles: ['Cook', 'Dishwasher'], email: 'david@clock.app', phone: '555-0108', color: COLORS[7], hourlyRate: 22, locationIds: ['loc2'], accessLevel: 'manager', bankInfo: null, ptoBalance: { sick: 10, vacation: 12, personal: 3 } },
   ];
 
   const positions = ['Manager', 'Server', 'Cook', 'Bartender', 'Host', 'Dishwasher'];
@@ -40,7 +42,7 @@ export function generateSampleData() {
         const template = shiftTemplates[Math.floor(Math.random() * shiftTemplates.length)];
         const start = setMinutes(setHours(day, template.startHour), template.startMin);
         const end = setMinutes(setHours(day, template.endHour), template.endMin);
-        shifts.push({ id: String(shiftId++), employeeId: emp.id, start: start.toISOString(), end: end.toISOString(), position: emp.role, notes: '', status: 'scheduled' });
+        shifts.push({ id: String(shiftId++), employeeId: emp.id, start: start.toISOString(), end: end.toISOString(), position: emp.roles[0], notes: '', status: 'scheduled' });
       }
     });
   }
@@ -82,5 +84,5 @@ export function generateSampleData() {
 
   const payrollSettings = { period: 'biweekly', startDay: 1 };
 
-  return { locations, currentLocationId: 'loc1', employees, shifts, positions, timeEntries, absences, salesEntries, payrollSettings, posts, tasks };
+  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, timeEntries, absences, salesEntries, payrollSettings, posts, tasks };
 }

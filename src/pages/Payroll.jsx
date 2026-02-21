@@ -11,7 +11,7 @@ export default function Payroll() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const locationEmployees = useMemo(() => employees.filter((e) => e.locationId === currentLocationId), [employees, currentLocationId]);
+  const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
 
   const period = payrollSettings.period;
@@ -168,7 +168,7 @@ export default function Payroll() {
                         <div className="payroll-emp__avatar" style={{ background: emp.color }}>{getInitials(emp.name)}</div>
                         <div>
                           <div className="payroll-emp__name">{emp.name}</div>
-                          <div className="payroll-emp__role">{emp.role}</div>
+                          <div className="payroll-emp__role">{(emp.roles || [emp.role]).join(', ')}</div>
                         </div>
                       </div>
                     </td>

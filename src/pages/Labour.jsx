@@ -14,7 +14,7 @@ export default function Labour() {
   const budgetWarning = currentLocation?.laborBudgetWarning ?? targetPercent;
   const budgetMax = currentLocation?.laborBudgetMax ?? targetPercent + 5;
 
-  const locationEmployees = useMemo(() => employees.filter((e) => e.locationId === currentLocationId), [employees, currentLocationId]);
+  const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
 
   const [weekOffset, setWeekOffset] = useState(0);

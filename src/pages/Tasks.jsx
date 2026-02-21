@@ -8,7 +8,7 @@ export default function Tasks() {
   const { state, dispatch } = useApp();
   const { tasks, employees, currentLocationId } = state;
 
-  const locationEmployees = useMemo(() => employees.filter((e) => e.locationId === currentLocationId), [employees, currentLocationId]);
+  const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationTasks = useMemo(() => tasks.filter((t) => t.locationId === currentLocationId), [tasks, currentLocationId]);
 
   const [filterStatus, setFilterStatus] = useState('');
