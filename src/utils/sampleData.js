@@ -294,12 +294,23 @@ export function generateSampleData() {
 
   const salesEntries = [];
   let salesId = 1;
+  // Past 30 days of actual sales
   for (let d = 30; d >= 0; d--) {
     const date = format(subDays(today, d), 'yyyy-MM-dd');
     locations.forEach((loc) => {
       const base = loc.id === 'loc1' ? 3500 : 2800;
       const variance = (Math.random() - 0.5) * 1400;
-      salesEntries.push({ id: String(salesId++), locationId: loc.id, date, amount: Math.round(base + variance) });
+      salesEntries.push({ id: String(salesId++), locationId: loc.id, date, amount: Math.round(base + variance), type: 'actual' });
+    });
+  }
+  // Projected sales for upcoming 2 weeks
+  for (let d = 1; d <= 14; d++) {
+    const date = format(addDays(today, d), 'yyyy-MM-dd');
+    locations.forEach((loc) => {
+      const base = loc.id === 'loc1' ? 3800 : 3000;
+      const dayOfWeek = addDays(today, d).getDay();
+      const weekendBoost = (dayOfWeek === 5 || dayOfWeek === 6) ? 800 : 0;
+      salesEntries.push({ id: String(salesId++), locationId: loc.id, date, amount: Math.round(base + weekendBoost), type: 'projected' });
     });
   }
 

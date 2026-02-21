@@ -1,14 +1,19 @@
 .labour-page {
-  max-width: 1200px;
+  max-width: 1400px;
+}
+
+.labour-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .labour-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 12px;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 10px 16px;
   background: var(--bg-white);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -25,8 +30,25 @@
 .labour-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat-card__sub {
+  display: block;
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+.stat-card__sub--projected {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.stat-card__icon--cyan {
+  background: #e0f2fe;
+  color: #0284c7;
 }
 
 .stat-card--danger {
@@ -44,14 +66,112 @@
   color: var(--danger);
 }
 
+/* ===== COMPARISON BAR ===== */
+.labour-comparison-bar {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.comparison-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.comparison-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 180px;
+}
+
+.comparison-value {
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 60px;
+  text-align: right;
+}
+
+.comparison-value--ok { color: var(--success); }
+.comparison-value--warning { color: var(--warning); }
+.comparison-value--danger { color: var(--danger); }
+
+.comparison-bar-track {
+  flex: 1;
+  height: 14px;
+  background: var(--bg);
+  border-radius: 7px;
+  position: relative;
+  overflow: visible;
+}
+
+.comparison-bar-fill {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.3s;
+}
+
+.comparison-bar-fill--actual { background: var(--primary); }
+.comparison-bar-fill--projected { background: #7c3aed; }
+
+.comparison-bar-target {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--success);
+  z-index: 1;
+}
+
+.comparison-bar-max {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--danger);
+  z-index: 1;
+}
+
+.comparison-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-dot--target { background: var(--success); }
+.legend-dot--max { background: var(--danger); }
+.legend-dot--actual { background: var(--primary); }
+.legend-dot--projected-fill { background: #7c3aed; }
+
+/* ===== ALERTS ===== */
 .labour-alert {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-radius: var(--radius-lg);
-  margin-bottom: 24px;
-  font-size: 14px;
+  margin-bottom: 20px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -73,170 +193,384 @@
   border: 1px solid #86efac;
 }
 
+/* ===== GRID LAYOUT ===== */
 .labour-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
-/* Daily Sales */
+/* ===== DAILY SALES ===== */
 .daily-sales {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 
-.daily-sale-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.daily-sales-header {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px 80px;
+  gap: 8px;
   padding: 6px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.dsh-day { }
+.dsh-bars { }
+.dsh-actual { text-align: right; }
+.dsh-projected { text-align: right; }
+
+.daily-sale-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px 80px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.daily-sale-row--total {
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+.daily-sale-left {
+  display: flex;
+  flex-direction: column;
 }
 
 .daily-sale-day {
   font-weight: 600;
   font-size: 13px;
   color: var(--text);
-  width: 36px;
 }
 
-.daily-sale-date {
-  font-size: 12px;
-  color: var(--text-light);
-  width: 90px;
+.daily-sale-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.daily-sale-bar-wrap {
-  flex: 1;
-  height: 20px;
-  background: var(--bg);
-  border-radius: 4px;
+.daily-bar {
+  height: 16px;
+  border-radius: 3px;
+  min-width: 4px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  transition: width 0.3s;
+}
+
+.daily-bar--actual {
+  background: var(--primary);
+}
+
+.daily-bar--projected {
+  background: #c4b5fd;
+}
+
+.daily-bar-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
   overflow: hidden;
 }
 
-.daily-sale-bar {
-  height: 100%;
-  background: var(--primary);
-  border-radius: 4px;
-  min-width: 2px;
-  max-width: 100%;
-  transition: width 0.3s ease;
+.daily-bar--projected .daily-bar-label {
+  color: #5b21b6;
 }
 
-.daily-sale-amount {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  width: 70px;
+.daily-sale-empty {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.daily-sale-actual,
+.daily-sale-projected {
+  font-size: 12px;
   text-align: right;
+  color: var(--text-secondary);
 }
 
-/* Forecasting */
+.daily-sale-total {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.daily-sales-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* ===== FORECASTING ===== */
 .forecast-section {
-  padding: 16px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
 }
 
-.forecast-section:last-child {
-  border-bottom: none;
-}
+.forecast-section:last-child { border-bottom: none; }
 
 .forecast-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   margin-bottom: 4px;
 }
 
 .forecast-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   margin: 4px 0;
 }
 
 .forecast-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--primary);
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .forecast-indicator {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  margin-top: 8px;
-  padding: 6px 12px;
+  margin-top: 6px;
+  padding: 5px 10px;
   border-radius: var(--radius);
 }
 
-.forecast-indicator--good {
-  background: var(--success-light);
-  color: var(--success);
+.forecast-indicator--good { background: var(--success-light); color: var(--success); }
+.forecast-indicator--bad { background: var(--danger-light); color: var(--danger); }
+
+/* Metrics grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-.forecast-indicator--bad {
-  background: var(--danger-light);
-  color: var(--danger);
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
 
-.history-table {
+.metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.metric-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* Employee labour breakdown */
+.emp-labour-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
 }
 
+.emp-labour-row {
+  display: grid;
+  grid-template-columns: 100px 40px 1fr 70px;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.emp-labour-name {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emp-labour-hours {
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.emp-labour-bar-wrap {
+  height: 12px;
+  background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.emp-labour-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 6px;
+  transition: width 0.3s;
+}
+
+.emp-labour-cost {
+  font-weight: 700;
+  color: var(--text);
+  text-align: right;
+}
+
+/* ===== HISTORY TABLE ===== */
+.history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .history-row {
   display: grid;
-  grid-template-columns: 70px 1fr 1fr 60px;
+  grid-template-columns: 70px 1fr 1fr 70px 1fr 65px;
   gap: 8px;
   padding: 8px 10px;
   background: var(--bg);
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 12px;
   align-items: center;
 }
 
-.history-week {
+.history-row--header {
+  background: none;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-week { font-weight: 600; color: var(--text); }
+.history-actual { color: var(--text-secondary); }
+.history-projected-col { color: #7c3aed; }
+.history-accuracy { font-weight: 600; }
+.history-accuracy--good { color: var(--success); }
+.history-accuracy--off { color: var(--warning); }
+.history-labor { color: var(--text-secondary); }
+.history-pct { font-weight: 600; text-align: right; }
+.history-pct--over { color: var(--danger); }
+.history-pct--ok { color: var(--success); }
+
+/* ===== BULK SALES MODAL ===== */
+.modal--wide {
+  width: 580px;
+  max-width: 95vw;
+}
+
+.modal__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.bulk-sales-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bulk-sales-row {
+  display: grid;
+  grid-template-columns: 100px 70px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.bulk-sales-day {
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
 
-.history-sales {
+.bulk-sales-date {
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
-.history-labor {
-  color: var(--text-secondary);
+.bulk-sales-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
 }
 
-.history-pct {
+.bulk-sales-dollar {
+  position: absolute;
+  left: 10px;
+  font-size: 14px;
   font-weight: 600;
-  text-align: right;
+  color: var(--text-light);
+  z-index: 1;
 }
 
-.history-pct--over {
-  color: var(--danger);
+.bulk-sales-input {
+  padding-left: 24px !important;
 }
 
-.history-pct--ok {
-  color: var(--success);
+.bulk-sales-total {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  margin-top: 8px;
+  border-top: 2px solid var(--border);
+  font-size: 14px;
+  color: var(--text);
 }
 
+.bulk-sales-total strong {
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.bulk-labor-pct {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius);
+}
+
+.bulk-labor-pct--ok { background: var(--success-light); color: var(--success); }
+.bulk-labor-pct--warning { background: var(--warning-light); color: var(--warning); }
+.bulk-labor-pct--danger { background: var(--danger-light); color: var(--danger); }
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
-  .labour-summary {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .labour-grid {
-    grid-template-columns: 1fr;
-  }
+  .labour-summary { grid-template-columns: repeat(2, 1fr); }
+  .labour-grid { grid-template-columns: 1fr; }
+  .labour-actions { flex-direction: column; }
 }
 
 @media (max-width: 640px) {
-  .labour-summary {
-    grid-template-columns: 1fr;
-  }
+  .labour-summary { grid-template-columns: 1fr; }
+  .comparison-item { flex-direction: column; align-items: flex-start; }
 }

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { TrendingUp, Plus, X, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, DollarSign, BarChart3, Target } from 'lucide-react';
-import { format, subDays, parseISO, isWithinInterval, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
+import { TrendingUp, Plus, X, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, DollarSign, BarChart3, Target, Calendar, Eye, Edit2, Trash2, Zap } from 'lucide-react';
+import { format, subDays, parseISO, isWithinInterval, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays } from 'date-fns';
 import { getHoursWorked, getInitials } from '../utils/helpers';
 import './Labour.css';
 
@@ -19,13 +19,14 @@ export default function Labour() {
 
   const [weekOffset, setWeekOffset] = useState(0);
   const [showSalesModal, setShowSalesModal] = useState(false);
+  const [salesModalMode, setSalesModalMode] = useState('single'); // 'single' | 'bulk' | 'projected'
   const [salesForm, setSalesForm] = useState({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' });
+  const [bulkSales, setBulkSales] = useState({});
+  const [projectedSales, setProjectedSales] = useState({});
 
-  const currentWeekStart = useMemo(() => {
-    const base = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return addWeeks(base, weekOffset);
-  }, [weekOffset]);
+  const currentWeekStart = useMemo(() => addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), weekOffset), [weekOffset]);
   const currentWeekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i)), [currentWeekStart]);
 
   // Calculate weekly labour cost
   const weeklyLabor = useMemo(() => {
@@ -36,43 +37,63 @@ export default function Labour() {
     });
     let totalCost = 0;
     let totalHours = 0;
+    const byEmployee = {};
     weekShifts.forEach((s) => {
       const emp = locationEmployees.find((e) => e.id === s.employeeId);
       if (emp) {
         const hrs = getHoursWorked(s.start, s.end);
         totalHours += hrs;
         totalCost += hrs * emp.hourlyRate;
+        if (!byEmployee[emp.id]) byEmployee[emp.id] = { hours: 0, cost: 0, name: emp.preferredName || emp.name, rate: emp.hourlyRate };
+        byEmployee[emp.id].hours += hrs;
+        byEmployee[emp.id].cost += hrs * emp.hourlyRate;
       }
     });
-    return { totalCost, totalHours, shiftCount: weekShifts.length };
+    return { totalCost, totalHours, shiftCount: weekShifts.length, byEmployee };
   }, [shifts, locationEmpIds, locationEmployees, currentWeekStart, currentWeekEnd]);
 
-  // Weekly sales
-  const weeklySales = useMemo(() => {
+  // Weekly actual sales
+  const weeklySalesActual = useMemo(() => {
     return salesEntries
-      .filter((s) => s.locationId === currentLocationId)
-      .filter((s) => {
-        const d = parseISO(s.date);
-        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd });
-      })
+      .filter((s) => s.locationId === currentLocationId && (s.type || 'actual') === 'actual')
+      .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }); })
       .reduce((sum, s) => sum + s.amount, 0);
   }, [salesEntries, currentLocationId, currentWeekStart, currentWeekEnd]);
 
-  const laborPercent = weeklySales > 0 ? (weeklyLabor.totalCost / weeklySales) * 100 : 0;
+  // Weekly projected sales
+  const weeklySalesProjected = useMemo(() => {
+    return salesEntries
+      .filter((s) => s.locationId === currentLocationId && s.type === 'projected')
+      .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }); })
+      .reduce((sum, s) => sum + s.amount, 0);
+  }, [salesEntries, currentLocationId, currentWeekStart, currentWeekEnd]);
+
+  // Use actual if available, otherwise projected
+  const effectiveSales = weeklySalesActual || weeklySalesProjected;
+  const isUsingProjected = weeklySalesActual === 0 && weeklySalesProjected > 0;
+
+  const laborPercentActual = weeklySalesActual > 0 ? (weeklyLabor.totalCost / weeklySalesActual) * 100 : 0;
+  const laborPercentProjected = weeklySalesProjected > 0 ? (weeklyLabor.totalCost / weeklySalesProjected) * 100 : 0;
+  const laborPercent = effectiveSales > 0 ? (weeklyLabor.totalCost / effectiveSales) * 100 : 0;
+
   const laborDiff = laborPercent - targetPercent;
   const isOverBudgetMax = laborPercent >= budgetMax;
   const isOverTarget = isOverBudgetMax || laborDiff > 2;
   const isUnderTarget = laborDiff < -5;
-  const isOnTarget = !isOverTarget && !isUnderTarget;
+  const isOnTarget = !isOverTarget && !isUnderTarget && effectiveSales > 0;
 
-  // Historical data for forecasting (last 4 weeks)
+  // Historical data (last 8 weeks)
   const historicalData = useMemo(() => {
     const weeks = [];
-    for (let w = 1; w <= 4; w++) {
+    for (let w = 1; w <= 8; w++) {
       const ws = subWeeks(currentWeekStart, w);
       const we = endOfWeek(ws, { weekStartsOn: 1 });
-      const sales = salesEntries
-        .filter((s) => s.locationId === currentLocationId)
+      const actual = salesEntries
+        .filter((s) => s.locationId === currentLocationId && (s.type || 'actual') === 'actual')
+        .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: ws, end: we }); })
+        .reduce((sum, s) => sum + s.amount, 0);
+      const projected = salesEntries
+        .filter((s) => s.locationId === currentLocationId && s.type === 'projected')
         .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: ws, end: we }); })
         .reduce((sum, s) => sum + s.amount, 0);
       const wShifts = shifts.filter((s) => {
@@ -85,63 +106,164 @@ export default function Labour() {
         const emp = locationEmployees.find((e) => e.id === s.employeeId);
         if (emp) labor += getHoursWorked(s.start, s.end) * emp.hourlyRate;
       });
+      const sales = actual || projected;
       const pct = sales > 0 ? (labor / sales) * 100 : 0;
-      weeks.push({ weekStart: ws, sales, labor, percent: pct });
+      const accuracy = actual > 0 && projected > 0 ? ((actual / projected) * 100).toFixed(0) : null;
+      weeks.push({ weekStart: ws, actual, projected, labor, percent: pct, accuracy });
     }
     return weeks;
   }, [salesEntries, shifts, currentLocationId, locationEmpIds, locationEmployees, currentWeekStart]);
 
-  // Forecasting: average historical sales => required revenue for current labor
+  // Averages
   const avgWeeklySales = useMemo(() => {
-    const totals = historicalData.filter((w) => w.sales > 0);
-    if (totals.length === 0) return 0;
-    return totals.reduce((s, w) => s + w.sales, 0) / totals.length;
+    const totals = historicalData.filter((w) => w.actual > 0);
+    return totals.length > 0 ? totals.reduce((s, w) => s + w.actual, 0) / totals.length : 0;
+  }, [historicalData]);
+
+  const avgLabourPct = useMemo(() => {
+    const totals = historicalData.filter((w) => w.percent > 0);
+    return totals.length > 0 ? totals.reduce((s, w) => s + w.percent, 0) / totals.length : 0;
   }, [historicalData]);
 
   const requiredRevenue = targetPercent > 0 ? (weeklyLabor.totalCost / targetPercent) * 100 : 0;
-  const revenueDiff = avgWeeklySales - requiredRevenue;
 
-  // Daily sales data for the week
+  // Daily sales breakdown (both actual and projected)
   const dailySales = useMemo(() => {
-    const days = [];
-    for (let d = 0; d < 7; d++) {
-      const date = format(addWeeks(currentWeekStart, 0), 'yyyy-MM-dd').slice(0, 8) + String(parseISO(format(currentWeekStart, 'yyyy-MM-dd')).getDate() + d).padStart(2, '0');
-      const dayDate = new Date(currentWeekStart);
-      dayDate.setDate(dayDate.getDate() + d);
-      const dateStr = format(dayDate, 'yyyy-MM-dd');
-      const entry = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr);
-      days.push({ date: dateStr, dayLabel: format(dayDate, 'EEE'), amount: entry?.amount || 0, entryId: entry?.id });
-    }
-    return days;
-  }, [salesEntries, currentLocationId, currentWeekStart]);
+    return weekDays.map((day) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const actual = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && (s.type || 'actual') === 'actual');
+      const projected = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && s.type === 'projected');
+      return { date: dateStr, dayLabel: format(day, 'EEE'), actual: actual?.amount || 0, projected: projected?.amount || 0, actualId: actual?.id, projectedId: projected?.id };
+    });
+  }, [salesEntries, currentLocationId, weekDays]);
 
-  function handleAddSales(e) {
+  // Maximum daily amount for bar scaling
+  const maxDailyAmount = Math.max(...dailySales.map((d) => Math.max(d.actual, d.projected)), 1);
+
+  // Employee labour breakdown
+  const topEmployees = useMemo(() => {
+    return Object.values(weeklyLabor.byEmployee)
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 8);
+  }, [weeklyLabor.byEmployee]);
+
+  // --- Sales Modal Handlers ---
+
+  function openSingleSales() {
+    setSalesModalMode('single');
+    setSalesForm({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' });
+    setShowSalesModal(true);
+  }
+
+  function openBulkSales() {
+    setSalesModalMode('bulk');
+    const initial = {};
+    weekDays.forEach((day) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const existing = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && (s.type || 'actual') === 'actual');
+      initial[dateStr] = existing ? String(existing.amount) : '';
+    });
+    setBulkSales(initial);
+    setShowSalesModal(true);
+  }
+
+  function openProjectedSales() {
+    setSalesModalMode('projected');
+    const initial = {};
+    weekDays.forEach((day) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const existing = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && s.type === 'projected');
+      initial[dateStr] = existing ? String(existing.amount) : '';
+    });
+    setProjectedSales(initial);
+    setShowSalesModal(true);
+  }
+
+  function handleSingleSave(e) {
     e.preventDefault();
-    const existing = salesEntries.find((s) => s.locationId === currentLocationId && s.date === salesForm.date);
+    const existing = salesEntries.find((s) => s.locationId === currentLocationId && s.date === salesForm.date && (s.type || 'actual') === 'actual');
     if (existing) {
       dispatch({ type: 'UPDATE_SALES_ENTRY', payload: { id: existing.id, amount: Number(salesForm.amount) } });
     } else {
-      dispatch({ type: 'ADD_SALES_ENTRY', payload: { locationId: currentLocationId, date: salesForm.date, amount: Number(salesForm.amount) } });
+      dispatch({ type: 'ADD_SALES_ENTRY', payload: { locationId: currentLocationId, date: salesForm.date, amount: Number(salesForm.amount), type: 'actual' } });
     }
     setShowSalesModal(false);
   }
+
+  function handleBulkSave() {
+    const entries = Object.entries(bulkSales)
+      .filter(([, amount]) => amount !== '' && Number(amount) >= 0)
+      .map(([date, amount]) => ({ locationId: currentLocationId, date, amount: Number(amount), type: 'actual' }));
+    if (entries.length > 0) {
+      dispatch({ type: 'BULK_UPDATE_SALES', payload: entries });
+    }
+    setShowSalesModal(false);
+  }
+
+  function handleProjectedSave() {
+    const entries = Object.entries(projectedSales)
+      .filter(([, amount]) => amount !== '' && Number(amount) >= 0)
+      .map(([date, amount]) => ({ locationId: currentLocationId, date, amount: Number(amount), type: 'projected' }));
+    if (entries.length > 0) {
+      dispatch({ type: 'BULK_UPDATE_SALES', payload: entries });
+    }
+    setShowSalesModal(false);
+  }
+
+  function autofillProjected() {
+    if (avgWeeklySales <= 0) return;
+    // Use day-of-week averages from historical data
+    const dayAvg = {};
+    historicalData.forEach((week) => {
+      for (let d = 0; d < 7; d++) {
+        const dayDate = format(addDays(week.weekStart, d), 'yyyy-MM-dd');
+        const entry = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dayDate && (s.type || 'actual') === 'actual');
+        if (entry) {
+          const dow = addDays(week.weekStart, d).getDay();
+          if (!dayAvg[dow]) dayAvg[dow] = [];
+          dayAvg[dow].push(entry.amount);
+        }
+      }
+    });
+    const filled = {};
+    weekDays.forEach((day) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const dow = day.getDay();
+      if (dayAvg[dow] && dayAvg[dow].length > 0) {
+        filled[dateStr] = String(Math.round(dayAvg[dow].reduce((a, b) => a + b, 0) / dayAvg[dow].length));
+      } else {
+        filled[dateStr] = String(Math.round(avgWeeklySales / 7));
+      }
+    });
+    setProjectedSales(filled);
+  }
+
+  const bulkTotal = Object.values(bulkSales).reduce((s, v) => s + (Number(v) || 0), 0);
+  const projectedTotal = Object.values(projectedSales).reduce((s, v) => s + (Number(v) || 0), 0);
+  const projectedLaborPct = projectedTotal > 0 ? (weeklyLabor.totalCost / projectedTotal) * 100 : 0;
 
   return (
     <div className="labour-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Labour & Forecasting</h1>
-          <p className="page-subtitle">Sales data, labour efficiency, and forecasting</p>
+          <h1 className="page-title">Labour & Sales</h1>
+          <p className="page-subtitle">Track sales, manage projections, and optimize labour costs</p>
         </div>
-        <button className="btn btn--primary" onClick={() => { setSalesForm({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' }); setShowSalesModal(true); }}>
-          <Plus size={16} /> Add Sales Data
-        </button>
+        <div className="labour-actions">
+          <button className="btn btn--secondary" onClick={openBulkSales}>
+            <Edit2 size={14} /> Enter Week Sales
+          </button>
+          <button className="btn btn--primary" onClick={openProjectedSales}>
+            <Zap size={14} /> Set Projected Sales
+          </button>
+        </div>
       </div>
 
       {/* Week Navigation */}
       <div className="labour-nav">
         <button className="btn btn--icon" onClick={() => setWeekOffset((o) => o - 1)}>&larr;</button>
         <span className="labour-nav__label">{format(currentWeekStart, 'MMM d')} - {format(currentWeekEnd, 'MMM d, yyyy')}</span>
+        <button className="btn btn--icon" onClick={() => setWeekOffset(0)}>Today</button>
         <button className="btn btn--icon" onClick={() => setWeekOffset((o) => o + 1)}>&rarr;</button>
       </div>
 
@@ -150,8 +272,18 @@ export default function Labour() {
         <div className="stat-card">
           <div className="stat-card__icon stat-card__icon--blue"><DollarSign size={22} /></div>
           <div className="stat-card__info">
-            <span className="stat-card__label">Weekly Sales</span>
-            <span className="stat-card__value">${weeklySales.toLocaleString()}</span>
+            <span className="stat-card__label">Actual Sales</span>
+            <span className="stat-card__value">${weeklySalesActual.toLocaleString()}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card__icon stat-card__icon--cyan"><Zap size={22} /></div>
+          <div className="stat-card__info">
+            <span className="stat-card__label">Projected Sales</span>
+            <span className="stat-card__value">${weeklySalesProjected.toLocaleString()}</span>
+            {weeklySalesActual > 0 && weeklySalesProjected > 0 && (
+              <span className="stat-card__sub">{((weeklySalesActual / weeklySalesProjected) * 100).toFixed(0)}% of projection</span>
+            )}
           </div>
         </div>
         <div className="stat-card">
@@ -159,6 +291,7 @@ export default function Labour() {
           <div className="stat-card__info">
             <span className="stat-card__label">Labour Cost</span>
             <span className="stat-card__value">${weeklyLabor.totalCost.toLocaleString()}</span>
+            <span className="stat-card__sub">{weeklyLabor.totalHours}h across {weeklyLabor.shiftCount} shifts</span>
           </div>
         </div>
         <div className={`stat-card ${isOverTarget ? 'stat-card--danger' : isOnTarget ? 'stat-card--success' : ''}`}>
@@ -166,139 +299,351 @@ export default function Labour() {
             <Target size={22} />
           </div>
           <div className="stat-card__info">
-            <span className="stat-card__label">Labour % (Target: {targetPercent}% | Max: {budgetMax}%)</span>
+            <span className="stat-card__label">
+              Labour %{isUsingProjected ? ' (vs Projected)' : ''} &middot; Target: {targetPercent}%
+            </span>
             <span className="stat-card__value">{laborPercent.toFixed(1)}%</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--green"><BarChart3 size={22} /></div>
-          <div className="stat-card__info">
-            <span className="stat-card__label">Total Hours</span>
-            <span className="stat-card__value">{weeklyLabor.totalHours}</span>
+            {isUsingProjected && <span className="stat-card__sub stat-card__sub--projected">Using projected sales</span>}
           </div>
         </div>
       </div>
 
+      {/* Dual Labour % comparison */}
+      {weeklySalesActual > 0 && weeklySalesProjected > 0 && (
+        <div className="labour-comparison-bar">
+          <div className="comparison-item">
+            <span className="comparison-label">Labour % vs Actual Sales</span>
+            <span className={`comparison-value ${laborPercentActual > budgetMax ? 'comparison-value--danger' : laborPercentActual > budgetWarning ? 'comparison-value--warning' : 'comparison-value--ok'}`}>
+              {laborPercentActual.toFixed(1)}%
+            </span>
+            <div className="comparison-bar-track">
+              <div className="comparison-bar-fill comparison-bar-fill--actual" style={{ width: `${Math.min(100, (laborPercentActual / (budgetMax + 5)) * 100)}%` }} />
+              <div className="comparison-bar-target" style={{ left: `${(targetPercent / (budgetMax + 5)) * 100}%` }} />
+              <div className="comparison-bar-max" style={{ left: `${(budgetMax / (budgetMax + 5)) * 100}%` }} />
+            </div>
+          </div>
+          <div className="comparison-item">
+            <span className="comparison-label">Labour % vs Projected Sales</span>
+            <span className={`comparison-value ${laborPercentProjected > budgetMax ? 'comparison-value--danger' : laborPercentProjected > budgetWarning ? 'comparison-value--warning' : 'comparison-value--ok'}`}>
+              {laborPercentProjected.toFixed(1)}%
+            </span>
+            <div className="comparison-bar-track">
+              <div className="comparison-bar-fill comparison-bar-fill--projected" style={{ width: `${Math.min(100, (laborPercentProjected / (budgetMax + 5)) * 100)}%` }} />
+              <div className="comparison-bar-target" style={{ left: `${(targetPercent / (budgetMax + 5)) * 100}%` }} />
+              <div className="comparison-bar-max" style={{ left: `${(budgetMax / (budgetMax + 5)) * 100}%` }} />
+            </div>
+          </div>
+          <div className="comparison-legend">
+            <span className="legend-item"><span className="legend-dot legend-dot--target" /> Target {targetPercent}%</span>
+            <span className="legend-item"><span className="legend-dot legend-dot--max" /> Max {budgetMax}%</span>
+          </div>
+        </div>
+      )}
+
       {/* Alerts */}
-      {weeklySales > 0 && (isOverTarget || isUnderTarget) && (
+      {effectiveSales > 0 && (isOverTarget || isUnderTarget) && (
         <div className={`labour-alert ${isOverTarget ? 'labour-alert--danger' : 'labour-alert--warning'}`}>
           <AlertTriangle size={20} />
           <div>
             {isOverTarget ? (
               <>
-                <strong>Labour is {laborDiff.toFixed(1)}% above target{isOverBudgetMax ? ` and exceeds the ${budgetMax}% hard cap` : ''}.</strong> Your labour cost is ${weeklyLabor.totalCost.toLocaleString()} against ${weeklySales.toLocaleString()} in sales ({laborPercent.toFixed(1)}% vs {targetPercent}% target).{isOverBudgetMax ? ' Scheduling is blocked until labor is reduced below the max budget.' : ' Consider reducing scheduled hours or increasing sales.'}
+                <strong>Labour is {laborDiff.toFixed(1)}% above target{isOverBudgetMax ? ` (exceeds ${budgetMax}% max)` : ''}.</strong>{' '}
+                ${weeklyLabor.totalCost.toLocaleString()} labour / ${effectiveSales.toLocaleString()} {isUsingProjected ? 'projected ' : ''}sales = {laborPercent.toFixed(1)}%
+                {isOverBudgetMax ? '. Scheduling blocked until reduced.' : '. Reduce hours or increase sales.'}
               </>
             ) : (
               <>
-                <strong>Labour is {Math.abs(laborDiff).toFixed(1)}% below target.</strong> You may be understaffed. Current labour is {laborPercent.toFixed(1)}% vs {targetPercent}% target.
+                <strong>Labour is {Math.abs(laborDiff).toFixed(1)}% below target.</strong> You may be understaffed ({laborPercent.toFixed(1)}% vs {targetPercent}% target).
               </>
             )}
           </div>
         </div>
       )}
 
-      {weeklySales > 0 && isOnTarget && (
+      {isOnTarget && (
         <div className="labour-alert labour-alert--success">
           <CheckCircle size={20} />
-          <div><strong>Labour is on target.</strong> Current labour efficiency is {laborPercent.toFixed(1)}%, within the target range of {targetPercent}%.</div>
+          <div><strong>Labour is on target.</strong> {laborPercent.toFixed(1)}% is within the {targetPercent}% goal{isUsingProjected ? ' (based on projected sales)' : ''}.</div>
         </div>
       )}
 
       <div className="labour-grid">
-        {/* Daily Sales Breakdown */}
+        {/* Daily Sales Breakdown - Actual vs Projected */}
         <div className="card">
           <div className="card__header">
-            <h2 className="card__title"><DollarSign size={18} /> Daily Sales</h2>
+            <h2 className="card__title"><DollarSign size={18} /> Daily Sales: Actual vs Projected</h2>
+            <button className="btn btn--secondary btn--sm" onClick={openSingleSales}><Plus size={12} /> Add</button>
           </div>
           <div className="card__body">
             <div className="daily-sales">
+              <div className="daily-sales-header">
+                <span className="dsh-day">Day</span>
+                <span className="dsh-bars">Sales</span>
+                <span className="dsh-actual">Actual</span>
+                <span className="dsh-projected">Projected</span>
+              </div>
               {dailySales.map((day) => (
                 <div key={day.date} className="daily-sale-row">
-                  <span className="daily-sale-day">{day.dayLabel}</span>
-                  <span className="daily-sale-date">{day.date}</span>
-                  <div className="daily-sale-bar-wrap">
-                    <div className="daily-sale-bar" style={{ width: `${weeklySales > 0 ? (day.amount / (weeklySales / 3)) * 100 : 0}%` }} />
+                  <div className="daily-sale-left">
+                    <span className="daily-sale-day">{day.dayLabel}</span>
                   </div>
-                  <span className="daily-sale-amount">${day.amount.toLocaleString()}</span>
+                  <div className="daily-sale-bars">
+                    {day.actual > 0 && (
+                      <div className="daily-bar daily-bar--actual" style={{ width: `${(day.actual / maxDailyAmount) * 100}%` }}>
+                        <span className="daily-bar-label">${day.actual.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {day.projected > 0 && (
+                      <div className="daily-bar daily-bar--projected" style={{ width: `${(day.projected / maxDailyAmount) * 100}%` }}>
+                        <span className="daily-bar-label">${day.projected.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {day.actual === 0 && day.projected === 0 && (
+                      <span className="daily-sale-empty">—</span>
+                    )}
+                  </div>
+                  <span className="daily-sale-actual">{day.actual > 0 ? `$${day.actual.toLocaleString()}` : '—'}</span>
+                  <span className="daily-sale-projected">{day.projected > 0 ? `$${day.projected.toLocaleString()}` : '—'}</span>
                 </div>
               ))}
+              <div className="daily-sale-row daily-sale-row--total">
+                <div className="daily-sale-left">
+                  <span className="daily-sale-day">Total</span>
+                </div>
+                <div className="daily-sale-bars" />
+                <span className="daily-sale-actual daily-sale-total">${weeklySalesActual.toLocaleString()}</span>
+                <span className="daily-sale-projected daily-sale-total">${weeklySalesProjected.toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="daily-sales-legend">
+              <span className="legend-item"><span className="legend-dot legend-dot--actual" /> Actual</span>
+              <span className="legend-item"><span className="legend-dot legend-dot--projected-fill" /> Projected</span>
             </div>
           </div>
         </div>
 
-        {/* Forecasting */}
+        {/* Forecasting & Analysis */}
         <div className="card">
           <div className="card__header">
-            <h2 className="card__title"><TrendingUp size={18} /> Forecasting</h2>
+            <h2 className="card__title"><TrendingUp size={18} /> Forecasting & Analysis</h2>
           </div>
           <div className="card__body">
+            {/* Revenue Required */}
             <div className="forecast-section">
               <h3 className="forecast-label">Revenue Required for Current Labour</h3>
-              <p className="forecast-desc">Based on your target of {targetPercent}% labour, you need:</p>
+              <p className="forecast-desc">To hit {targetPercent}% target with ${weeklyLabor.totalCost.toLocaleString()} in labour:</p>
               <div className="forecast-value">${requiredRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-              <p className="forecast-desc">in weekly sales to sustain ${weeklyLabor.totalCost.toLocaleString()} in labour costs.</p>
-            </div>
-
-            <div className="forecast-section">
-              <h3 className="forecast-label">Historical Avg Weekly Sales</h3>
-              <div className="forecast-value">${avgWeeklySales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-              {avgWeeklySales > 0 && (
-                <div className={`forecast-indicator ${revenueDiff >= 0 ? 'forecast-indicator--good' : 'forecast-indicator--bad'}`}>
-                  {revenueDiff >= 0 ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+              {weeklySalesProjected > 0 && (
+                <div className={`forecast-indicator ${weeklySalesProjected >= requiredRevenue ? 'forecast-indicator--good' : 'forecast-indicator--bad'}`}>
+                  {weeklySalesProjected >= requiredRevenue ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
                   <span>
-                    {revenueDiff >= 0
-                      ? `$${revenueDiff.toLocaleString(undefined, { maximumFractionDigits: 0 })} above required revenue`
-                      : `$${Math.abs(revenueDiff).toLocaleString(undefined, { maximumFractionDigits: 0 })} below required revenue`
-                    }
+                    Projected sales ${weeklySalesProjected >= requiredRevenue ? 'covers' : 'falls short of'} required revenue by ${Math.abs(weeklySalesProjected - requiredRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              )}
+              {avgWeeklySales > 0 && (
+                <div className={`forecast-indicator ${avgWeeklySales >= requiredRevenue ? 'forecast-indicator--good' : 'forecast-indicator--bad'}`}>
+                  {avgWeeklySales >= requiredRevenue ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                  <span>
+                    Avg historical (${avgWeeklySales.toLocaleString(undefined, { maximumFractionDigits: 0 })}) is ${Math.abs(avgWeeklySales - requiredRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })} {avgWeeklySales >= requiredRevenue ? 'above' : 'below'}
                   </span>
                 </div>
               )}
             </div>
 
+            {/* Key Metrics */}
             <div className="forecast-section">
-              <h3 className="forecast-label">4-Week History</h3>
-              <div className="history-table">
-                {historicalData.map((w, i) => (
-                  <div key={i} className="history-row">
-                    <span className="history-week">{format(w.weekStart, 'MMM d')}</span>
-                    <span className="history-sales">${w.sales.toLocaleString()}</span>
-                    <span className="history-labor">${w.labor.toLocaleString()}</span>
-                    <span className={`history-pct ${w.percent > targetPercent + 2 ? 'history-pct--over' : w.percent > 0 ? 'history-pct--ok' : ''}`}>
-                      {w.percent > 0 ? `${w.percent.toFixed(1)}%` : '-'}
-                    </span>
-                  </div>
-                ))}
+              <h3 className="forecast-label">Key Metrics</h3>
+              <div className="metrics-grid">
+                <div className="metric-card">
+                  <span className="metric-value">${avgWeeklySales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="metric-label">Avg Weekly Sales (8wk)</span>
+                </div>
+                <div className="metric-card">
+                  <span className="metric-value">{avgLabourPct.toFixed(1)}%</span>
+                  <span className="metric-label">Avg Labour % (8wk)</span>
+                </div>
+                <div className="metric-card">
+                  <span className="metric-value">{weeklyLabor.totalHours}h</span>
+                  <span className="metric-label">Hours This Week</span>
+                </div>
+                <div className="metric-card">
+                  <span className="metric-value">${weeklyLabor.totalHours > 0 ? (weeklyLabor.totalCost / weeklyLabor.totalHours).toFixed(2) : '0'}</span>
+                  <span className="metric-label">Avg $/Hour</span>
+                </div>
               </div>
             </div>
+
+            {/* Labour by Employee */}
+            {topEmployees.length > 0 && (
+              <div className="forecast-section">
+                <h3 className="forecast-label">Labour Cost by Employee</h3>
+                <div className="emp-labour-list">
+                  {topEmployees.map((emp, i) => (
+                    <div key={i} className="emp-labour-row">
+                      <span className="emp-labour-name">{emp.name}</span>
+                      <span className="emp-labour-hours">{emp.hours}h</span>
+                      <div className="emp-labour-bar-wrap">
+                        <div className="emp-labour-bar" style={{ width: `${(emp.cost / (topEmployees[0]?.cost || 1)) * 100}%` }} />
+                      </div>
+                      <span className="emp-labour-cost">${emp.cost.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Historical Trends */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <div className="card__header">
+          <h2 className="card__title"><BarChart3 size={18} /> 8-Week History</h2>
+        </div>
+        <div className="card__body">
+          <div className="history-table">
+            <div className="history-row history-row--header">
+              <span className="history-week">Week</span>
+              <span className="history-actual">Actual Sales</span>
+              <span className="history-projected-col">Projected</span>
+              <span className="history-accuracy">Accuracy</span>
+              <span className="history-labor">Labour Cost</span>
+              <span className="history-pct">Labour %</span>
+            </div>
+            {historicalData.map((w, i) => (
+              <div key={i} className="history-row">
+                <span className="history-week">{format(w.weekStart, 'MMM d')}</span>
+                <span className="history-actual">{w.actual > 0 ? `$${w.actual.toLocaleString()}` : '—'}</span>
+                <span className="history-projected-col">{w.projected > 0 ? `$${w.projected.toLocaleString()}` : '—'}</span>
+                <span className={`history-accuracy ${w.accuracy ? (Number(w.accuracy) >= 95 && Number(w.accuracy) <= 105 ? 'history-accuracy--good' : 'history-accuracy--off') : ''}`}>
+                  {w.accuracy ? `${w.accuracy}%` : '—'}
+                </span>
+                <span className="history-labor">{w.labor > 0 ? `$${w.labor.toLocaleString()}` : '—'}</span>
+                <span className={`history-pct ${w.percent > targetPercent + 2 ? 'history-pct--over' : w.percent > 0 ? 'history-pct--ok' : ''}`}>
+                  {w.percent > 0 ? `${w.percent.toFixed(1)}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== SALES MODALS ===== */}
       {showSalesModal && (
         <div className="modal-overlay" onClick={() => setShowSalesModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className={`modal ${salesModalMode !== 'single' ? 'modal--wide' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">Add Sales Data</h2>
+              <h2 className="modal__title">
+                {salesModalMode === 'single' && 'Add Sales Entry'}
+                {salesModalMode === 'bulk' && 'Enter Weekly Sales (Actual)'}
+                {salesModalMode === 'projected' && 'Set Projected Sales'}
+              </h2>
               <button className="btn btn--icon" onClick={() => setShowSalesModal(false)}><X size={18} /></button>
             </div>
-            <form onSubmit={handleAddSales}>
-              <div className="modal__body">
-                <div className="form-group">
-                  <label className="form-label">Date</label>
-                  <input type="date" className="form-input" value={salesForm.date} onChange={(e) => setSalesForm({ ...salesForm, date: e.target.value })} required />
+
+            {/* Single Entry */}
+            {salesModalMode === 'single' && (
+              <form onSubmit={handleSingleSave}>
+                <div className="modal__body">
+                  <div className="form-group">
+                    <label className="form-label">Date</label>
+                    <input type="date" className="form-input" value={salesForm.date} onChange={(e) => setSalesForm({ ...salesForm, date: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Sales Amount ($)</label>
+                    <input type="number" className="form-input" value={salesForm.amount} onChange={(e) => setSalesForm({ ...salesForm, amount: e.target.value })} placeholder="3500" min="0" step="0.01" required />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Sales Amount ($)</label>
-                  <input type="number" className="form-input" value={salesForm.amount} onChange={(e) => setSalesForm({ ...salesForm, amount: e.target.value })} placeholder="3500" min="0" step="0.01" required />
+                <div className="modal__footer">
+                  <div className="modal__footer-right">
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowSalesModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">Save</button>
+                  </div>
                 </div>
-              </div>
-              <div className="modal__footer">
-                <div className="modal__footer-right">
-                  <button type="button" className="btn btn--secondary" onClick={() => setShowSalesModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn--primary">Save</button>
+              </form>
+            )}
+
+            {/* Bulk Weekly Entry */}
+            {salesModalMode === 'bulk' && (
+              <>
+                <div className="modal__body">
+                  <p className="modal__desc">Enter actual sales for each day of the week ({format(currentWeekStart, 'MMM d')} - {format(currentWeekEnd, 'MMM d')}).</p>
+                  <div className="bulk-sales-grid">
+                    {weekDays.map((day) => {
+                      const dateStr = format(day, 'yyyy-MM-dd');
+                      return (
+                        <div key={dateStr} className="bulk-sales-row">
+                          <span className="bulk-sales-day">{format(day, 'EEEE')}</span>
+                          <span className="bulk-sales-date">{format(day, 'MMM d')}</span>
+                          <div className="bulk-sales-input-wrap">
+                            <span className="bulk-sales-dollar">$</span>
+                            <input type="number" className="form-input bulk-sales-input" value={bulkSales[dateStr] || ''} onChange={(e) => setBulkSales({ ...bulkSales, [dateStr]: e.target.value })} placeholder="0" min="0" step="0.01" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="bulk-sales-total">
+                    <span>Week Total:</span>
+                    <strong>${bulkTotal.toLocaleString()}</strong>
+                    {bulkTotal > 0 && weeklyLabor.totalCost > 0 && (
+                      <span className={`bulk-labor-pct ${(weeklyLabor.totalCost / bulkTotal) * 100 > budgetMax ? 'bulk-labor-pct--danger' : (weeklyLabor.totalCost / bulkTotal) * 100 <= targetPercent + 2 ? 'bulk-labor-pct--ok' : 'bulk-labor-pct--warning'}`}>
+                        Labour: {((weeklyLabor.totalCost / bulkTotal) * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </form>
+                <div className="modal__footer">
+                  <div className="modal__footer-right">
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowSalesModal(false)}>Cancel</button>
+                    <button type="button" className="btn btn--primary" onClick={handleBulkSave}>Save Actual Sales</button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Projected Sales */}
+            {salesModalMode === 'projected' && (
+              <>
+                <div className="modal__body">
+                  <p className="modal__desc">Set projected/estimated sales for each day. These are used to calculate expected labour % when scheduling.</p>
+                  <div className="bulk-sales-grid">
+                    {weekDays.map((day) => {
+                      const dateStr = format(day, 'yyyy-MM-dd');
+                      return (
+                        <div key={dateStr} className="bulk-sales-row">
+                          <span className="bulk-sales-day">{format(day, 'EEEE')}</span>
+                          <span className="bulk-sales-date">{format(day, 'MMM d')}</span>
+                          <div className="bulk-sales-input-wrap">
+                            <span className="bulk-sales-dollar">$</span>
+                            <input type="number" className="form-input bulk-sales-input" value={projectedSales[dateStr] || ''} onChange={(e) => setProjectedSales({ ...projectedSales, [dateStr]: e.target.value })} placeholder="0" min="0" step="0.01" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="bulk-sales-total">
+                    <span>Projected Total:</span>
+                    <strong>${projectedTotal.toLocaleString()}</strong>
+                    {projectedTotal > 0 && weeklyLabor.totalCost > 0 && (
+                      <span className={`bulk-labor-pct ${projectedLaborPct > budgetMax ? 'bulk-labor-pct--danger' : projectedLaborPct <= targetPercent + 2 ? 'bulk-labor-pct--ok' : 'bulk-labor-pct--warning'}`}>
+                        Projected Labour: {projectedLaborPct.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  <button type="button" className="btn btn--secondary btn--sm" onClick={autofillProjected} style={{ marginTop: 8 }}>
+                    <Zap size={12} /> Auto-fill from historical averages
+                  </button>
+                </div>
+                <div className="modal__footer">
+                  <div className="modal__footer-right">
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowSalesModal(false)}>Cancel</button>
+                    <button type="button" className="btn btn--primary" onClick={handleProjectedSave}>Save Projections</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

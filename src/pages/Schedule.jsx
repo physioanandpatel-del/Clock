@@ -113,10 +113,10 @@ export default function Schedule() {
     return { totalCost, totalHours };
   }, [weekShifts, locationEmployees]);
 
-  // Weekly sales for labor % calculation
-  const weeklySales = useMemo(() => {
+  // Weekly sales for labor % calculation — actual and projected
+  const weeklySalesActual = useMemo(() => {
     return (salesEntries || [])
-      .filter((s) => s.locationId === currentLocationId)
+      .filter((s) => s.locationId === currentLocationId && (s.type || 'actual') === 'actual')
       .filter((s) => {
         const d = parseISO(s.date);
         return isWithinInterval(d, { start: weekStart, end: weekEnd });
@@ -124,8 +124,25 @@ export default function Schedule() {
       .reduce((sum, s) => sum + s.amount, 0);
   }, [salesEntries, currentLocationId, weekStart, weekEnd]);
 
+  const weeklySalesProjected = useMemo(() => {
+    return (salesEntries || [])
+      .filter((s) => s.locationId === currentLocationId && s.type === 'projected')
+      .filter((s) => {
+        const d = parseISO(s.date);
+        return isWithinInterval(d, { start: weekStart, end: weekEnd });
+      })
+      .reduce((sum, s) => sum + s.amount, 0);
+  }, [salesEntries, currentLocationId, weekStart, weekEnd]);
+
+  // Use actual if available, fallback to projected
+  const weeklySales = weeklySalesActual || weeklySalesProjected;
+  const isUsingProjected = weeklySalesActual === 0 && weeklySalesProjected > 0;
+
   const currentLaborPercent = weeklySales > 0
     ? (weeklyLaborData.totalCost / weeklySales) * 100
+    : 0;
+  const laborPercentVsProjected = weeklySalesProjected > 0
+    ? (weeklyLaborData.totalCost / weeklySalesProjected) * 100
     : 0;
   const isOverBudgetMax = weeklySales > 0 && currentLaborPercent >= budgetMax;
   const isOverBudgetWarning = weeklySales > 0 && currentLaborPercent >= budgetWarning && currentLaborPercent < budgetMax;
@@ -139,12 +156,13 @@ export default function Schedule() {
     const newCost = newHours * emp.hourlyRate;
     const projectedCost = weeklyLaborData.totalCost + newCost;
     const projectedPercent = (projectedCost / weeklySales) * 100;
+    const projectedPctVsProjectedSales = weeklySalesProjected > 0 ? (projectedCost / weeklySalesProjected) * 100 : null;
 
     if (projectedPercent >= budgetMax) {
       return {
         allowed: false,
         projectedPercent,
-        message: `Adding this shift would push labor to ${projectedPercent.toFixed(1)}%, exceeding the ${budgetMax}% max budget for ${currentLocation?.name || 'this location'}.`,
+        message: `Adding this shift would push labor to ${projectedPercent.toFixed(1)}%, exceeding the ${budgetMax}% max budget.${projectedPctVsProjectedSales ? ` (${projectedPctVsProjectedSales.toFixed(1)}% vs projected sales)` : ''}`,
       };
     }
     if (projectedPercent >= budgetWarning) {
@@ -152,7 +170,7 @@ export default function Schedule() {
         allowed: true,
         warning: true,
         projectedPercent,
-        message: `This shift will push labor to ${projectedPercent.toFixed(1)}%, approaching the ${budgetMax}% max (warning at ${budgetWarning}%).`,
+        message: `This shift will push labor to ${projectedPercent.toFixed(1)}%, approaching the ${budgetMax}% max.${projectedPctVsProjectedSales ? ` (${projectedPctVsProjectedSales.toFixed(1)}% vs projected sales)` : ''}`,
       };
     }
     return { allowed: true };
@@ -431,12 +449,18 @@ export default function Schedule() {
             {isOverBudgetMax ? <XCircle size={16} /> : isOverBudgetWarning ? <AlertTriangle size={16} /> : <Check size={16} />}
             <span>
               Labor: <strong>{currentLaborPercent.toFixed(1)}%</strong>
-              {' '}(${weeklyLaborData.totalCost.toLocaleString()} / ${weeklySales.toLocaleString()} sales)
+              {' '}(${weeklyLaborData.totalCost.toLocaleString()} / ${weeklySales.toLocaleString()} {isUsingProjected ? 'projected ' : ''}sales)
+              {isUsingProjected && <em style={{ fontSize: '11px', marginLeft: 4, opacity: 0.8 }}> — using projected sales</em>}
             </span>
           </div>
           <div className="labor-budget-bar__right">
+            {weeklySalesActual > 0 && weeklySalesProjected > 0 && (
+              <span className="labor-budget-bar__projected">
+                vs Projected: <strong>{laborPercentVsProjected.toFixed(1)}%</strong>
+              </span>
+            )}
             <span className="labor-budget-bar__range">
-              Target: {targetPercent}% | Warning: {budgetWarning}% | Max: {budgetMax}%
+              Target: {targetPercent}% | Max: {budgetMax}%
             </span>
           </div>
         </div>

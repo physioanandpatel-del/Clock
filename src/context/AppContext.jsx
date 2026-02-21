@@ -30,6 +30,8 @@ function loadState() {
       }
       if (!data.absences) data.absences = [];
       if (!data.salesEntries) data.salesEntries = [];
+      // Migrate sales entries: add type field (default 'actual')
+      data.salesEntries = data.salesEntries.map((s) => ({ ...s, type: s.type || 'actual' }));
       if (!data.payrollSettings) data.payrollSettings = { period: 'biweekly', startDay: 1 };
       if (!data.posts) data.posts = [];
       if (!data.tasks) data.tasks = [];
@@ -222,13 +224,30 @@ function reducer(state, action) {
 
     // Sales
     case 'ADD_SALES_ENTRY': {
-      const entry = { ...action.payload, id: generateId() };
+      const entry = { ...action.payload, id: generateId(), type: action.payload.type || 'actual' };
       return { ...state, salesEntries: [...state.salesEntries, entry] };
     }
     case 'UPDATE_SALES_ENTRY':
       return { ...state, salesEntries: state.salesEntries.map((s) => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
     case 'DELETE_SALES_ENTRY':
       return { ...state, salesEntries: state.salesEntries.filter((s) => s.id !== action.payload) };
+    case 'BULK_ADD_SALES': {
+      const entries = action.payload.map((e) => ({ ...e, id: generateId(), type: e.type || 'actual' }));
+      return { ...state, salesEntries: [...state.salesEntries, ...entries] };
+    }
+    case 'BULK_UPDATE_SALES': {
+      // Update existing entries or add new ones
+      let updated = [...state.salesEntries];
+      action.payload.forEach((entry) => {
+        const idx = updated.findIndex((s) => s.locationId === entry.locationId && s.date === entry.date && s.type === entry.type);
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], amount: entry.amount };
+        } else {
+          updated.push({ ...entry, id: generateId() });
+        }
+      });
+      return { ...state, salesEntries: updated };
+    }
 
     // Posts (Newsfeed)
     case 'ADD_POST': {
