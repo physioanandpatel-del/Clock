@@ -1,13 +1,18 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Users, Clock, DollarSign, CalendarDays, TrendingUp, AlertCircle, Target, MapPin } from 'lucide-react';
-import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import {
+  Users, Clock, DollarSign, CalendarDays, TrendingUp, AlertCircle,
+  Target, MapPin, CalendarOff, ListTodo, MessageSquare, ArrowRight,
+  CheckCircle2, AlertTriangle, BarChart3
+} from 'lucide-react';
+import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval, formatDistanceToNow } from 'date-fns';
 import { formatTime, formatDuration, getInitials, calculateLaborCost } from '../utils/helpers';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const { state } = useApp();
-  const { employees, shifts, timeEntries, locations, currentLocationId, salesEntries, absences } = state;
+  const { employees, shifts, timeEntries, locations, currentLocationId, salesEntries, absences, tasks, posts } = state;
 
   const currentLocation = locations.find((l) => l.id === currentLocationId);
   const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
@@ -32,6 +37,7 @@ export default function Dashboard() {
       .reduce((sum, s) => sum + s.amount, 0);
     const laborPercent = weekSales > 0 ? (weekLabor / weekSales) * 100 : 0;
     const pendingAbsences = absences.filter((a) => a.status === 'pending' && locationEmpIds.has(a.employeeId));
+    const draftShifts = locShifts.filter((s) => s.status === 'draft');
 
     return {
       totalEmployees: locationEmployees.length,
@@ -42,6 +48,7 @@ export default function Dashboard() {
       weekSales,
       laborPercent,
       pendingAbsences: pendingAbsences.length,
+      draftShifts: draftShifts.length,
     };
   }, [locationEmployees, locationEmpIds, shifts, timeEntries, salesEntries, absences, currentLocationId, weekStart, weekEnd]);
 
@@ -62,19 +69,38 @@ export default function Dashboard() {
     [timeEntries, locationEmployees, locationEmpIds]
   );
 
+  const pendingAbsencesList = useMemo(
+    () =>
+      absences
+        .filter((a) => a.status === 'pending' && locationEmpIds.has(a.employeeId))
+        .map((a) => ({ ...a, employee: employees.find((e) => e.id === a.employeeId) }))
+        .slice(0, 5),
+    [absences, employees, locationEmpIds]
+  );
+
+  const recentTasks = useMemo(
+    () => tasks.filter((t) => t.status !== 'completed').slice(0, 5),
+    [tasks]
+  );
+
+  const recentPosts = useMemo(
+    () =>
+      posts
+        .map((p) => ({ ...p, author: employees.find((e) => e.id === p.authorId) }))
+        .slice(0, 3),
+    [posts, employees]
+  );
+
   const targetPercent = currentLocation?.targetLaborPercent || 30;
   const isOverTarget = stats.laborPercent > targetPercent + 2;
 
   return (
     <div className="dashboard">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">
-            <MapPin size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-            {currentLocation?.name} &middot; {format(today, 'EEEE, MMMM d, yyyy')}
-          </p>
-        </div>
+      <div className="dash-location-bar">
+        <MapPin size={14} />
+        <span>{currentLocation?.name}</span>
+        <span className="dash-location-bar__sep">&middot;</span>
+        <span>{format(today, 'EEEE, MMMM d, yyyy')}</span>
       </div>
 
       <div className="stats-grid">
@@ -110,18 +136,48 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Alerts banner */}
+      {(stats.pendingAbsences > 0 || stats.draftShifts > 0 || (isOverTarget && stats.weekSales > 0)) && (
+        <div className="dash-alerts">
+          {stats.pendingAbsences > 0 && (
+            <Link to="/absences" className="dash-alert dash-alert--warning">
+              <CalendarOff size={16} />
+              <span>{stats.pendingAbsences} pending absence request{stats.pendingAbsences > 1 ? 's' : ''}</span>
+              <ArrowRight size={14} />
+            </Link>
+          )}
+          {stats.draftShifts > 0 && (
+            <Link to="/schedule" className="dash-alert dash-alert--info">
+              <CalendarDays size={16} />
+              <span>{stats.draftShifts} unpublished draft shift{stats.draftShifts > 1 ? 's' : ''}</span>
+              <ArrowRight size={14} />
+            </Link>
+          )}
+          {isOverTarget && stats.weekSales > 0 && (
+            <Link to="/labour" className="dash-alert dash-alert--danger">
+              <AlertTriangle size={16} />
+              <span>Labour at {stats.laborPercent.toFixed(1)}% — above {targetPercent}% target</span>
+              <ArrowRight size={14} />
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="dashboard__grid">
+        {/* Today's Schedule */}
         <div className="card">
           <div className="card__header">
             <h2 className="card__title"><CalendarDays size={18} /> Today's Schedule</h2>
-            <span className="badge badge--blue">{todayShifts.length} shifts</span>
+            <Link to="/schedule" className="card__header-link">
+              <span className="badge badge--blue">{todayShifts.length} shifts</span>
+            </Link>
           </div>
           <div className="card__body">
             {todayShifts.length === 0 ? (
               <div className="empty-state"><CalendarDays size={40} className="empty-state__icon" /><p>No shifts scheduled for today</p></div>
             ) : (
               <div className="shift-list">
-                {todayShifts.map((shift) => (
+                {todayShifts.slice(0, 6).map((shift) => (
                   <div key={shift.id} className="shift-item">
                     <div className="shift-item__avatar" style={{ background: shift.employee?.color || '#94a3b8' }}>
                       {shift.employee ? getInitials(shift.employee.name) : '?'}
@@ -130,7 +186,10 @@ export default function Dashboard() {
                       <div className="shift-item__name">{shift.employee?.name || 'Unassigned'}</div>
                       <div className="shift-item__meta">{shift.position} &middot; {formatTime(shift.start)} - {formatTime(shift.end)}</div>
                     </div>
-                    <div className="shift-item__duration">{formatDuration(shift.start, shift.end)}</div>
+                    <div className="shift-item__right">
+                      <span className="shift-item__duration">{formatDuration(shift.start, shift.end)}</span>
+                      {shift.status === 'draft' && <span className="badge badge--draft">Draft</span>}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -138,10 +197,13 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Currently Clocked In */}
         <div className="card">
           <div className="card__header">
             <h2 className="card__title"><Clock size={18} /> Currently Clocked In</h2>
-            <span className="badge badge--green">{activeEntries.length} active</span>
+            <Link to="/time-clock" className="card__header-link">
+              <span className="badge badge--green">{activeEntries.length} active</span>
+            </Link>
           </div>
           <div className="card__body">
             {activeEntries.length === 0 ? (
@@ -165,9 +227,80 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Pending Absences */}
+        <div className="card">
+          <div className="card__header">
+            <h2 className="card__title"><CalendarOff size={18} /> Pending Absences</h2>
+            <Link to="/absences" className="card__header-link">
+              {stats.pendingAbsences > 0 && <span className="badge badge--pending">{stats.pendingAbsences} pending</span>}
+            </Link>
+          </div>
+          <div className="card__body">
+            {pendingAbsencesList.length === 0 ? (
+              <div className="empty-state"><CheckCircle2 size={40} className="empty-state__icon" /><p>No pending requests</p></div>
+            ) : (
+              <div className="shift-list">
+                {pendingAbsencesList.map((absence) => (
+                  <div key={absence.id} className="shift-item">
+                    <div className="shift-item__avatar" style={{ background: absence.employee?.color || '#94a3b8' }}>
+                      {absence.employee ? getInitials(absence.employee.name) : '?'}
+                    </div>
+                    <div className="shift-item__info">
+                      <div className="shift-item__name">{absence.employee?.name || 'Unknown'}</div>
+                      <div className="shift-item__meta">
+                        {absence.type} &middot; {format(parseISO(absence.startDate), 'MMM d')}
+                        {absence.endDate && absence.endDate !== absence.startDate && ` - ${format(parseISO(absence.endDate), 'MMM d')}`}
+                      </div>
+                    </div>
+                    <span className="badge badge--pending">Pending</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Active Tasks */}
+        <div className="card">
+          <div className="card__header">
+            <h2 className="card__title"><ListTodo size={18} /> Active Tasks</h2>
+            <Link to="/tasks" className="card__header-link">
+              <span className="badge badge--blue">{recentTasks.length} open</span>
+            </Link>
+          </div>
+          <div className="card__body">
+            {recentTasks.length === 0 ? (
+              <div className="empty-state"><CheckCircle2 size={40} className="empty-state__icon" /><p>All tasks complete!</p></div>
+            ) : (
+              <div className="task-list">
+                {recentTasks.map((task) => (
+                  <div key={task.id} className="task-item">
+                    <div className={`task-item__status task-item__status--${task.status}`} />
+                    <div className="task-item__info">
+                      <div className="task-item__title">{task.title}</div>
+                      {task.subtasks && (
+                        <div className="task-item__meta">
+                          {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks done
+                        </div>
+                      )}
+                    </div>
+                    <span className={`badge badge--${task.status === 'in_progress' ? 'blue' : 'pending'}`}>
+                      {task.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Weekly Overview */}
         <div className="card">
           <div className="card__header">
             <h2 className="card__title"><TrendingUp size={18} /> Weekly Overview</h2>
+            <Link to="/reports" className="card__header-link">
+              <BarChart3 size={16} style={{ color: 'var(--text-light)' }} />
+            </Link>
           </div>
           <div className="card__body">
             <div className="weekly-stats">
@@ -184,23 +317,72 @@ export default function Dashboard() {
                 <span className="weekly-stat__label">Weekly Sales</span>
               </div>
             </div>
+            {stats.weekSales > 0 && (
+              <div className="labor-target-bar">
+                <div className="labor-target-bar__header">
+                  <span>Labour vs Target</span>
+                  <span className={isOverTarget ? 'text-danger' : 'text-success'}>
+                    {stats.laborPercent.toFixed(1)}% / {targetPercent}%
+                  </span>
+                </div>
+                <div className="labor-target-bar__track">
+                  <div
+                    className={`labor-target-bar__fill ${isOverTarget ? 'labor-target-bar__fill--danger' : 'labor-target-bar__fill--success'}`}
+                    style={{ width: `${Math.min((stats.laborPercent / (targetPercent * 1.5)) * 100, 100)}%` }}
+                  />
+                  <div
+                    className="labor-target-bar__marker"
+                    style={{ left: `${(targetPercent / (targetPercent * 1.5)) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Recent Newsfeed */}
         <div className="card">
           <div className="card__header">
-            <h2 className="card__title"><AlertCircle size={18} /> Quick Actions</h2>
-            {stats.pendingAbsences > 0 && <span className="badge badge--pending">{stats.pendingAbsences} pending</span>}
+            <h2 className="card__title"><MessageSquare size={18} /> Recent Posts</h2>
+            <Link to="/newsfeed" className="card__header-link">View All</Link>
           </div>
           <div className="card__body">
-            <div className="quick-actions">
-              <a href="/schedule" className="quick-action-btn"><CalendarDays size={18} /> Create Schedule</a>
-              <a href="/employees" className="quick-action-btn"><Users size={18} /> Add Employee</a>
-              <a href="/time-clock" className="quick-action-btn"><Clock size={18} /> Time Clock</a>
-              <a href="/labour" className="quick-action-btn"><TrendingUp size={18} /> Labour & Forecasting</a>
-            </div>
+            {recentPosts.length === 0 ? (
+              <div className="empty-state"><MessageSquare size={40} className="empty-state__icon" /><p>No posts yet</p></div>
+            ) : (
+              <div className="post-list">
+                {recentPosts.map((post) => (
+                  <div key={post.id} className="post-item">
+                    <div className="post-item__avatar" style={{ background: post.author?.color || '#94a3b8' }}>
+                      {post.author ? getInitials(post.author.name) : '?'}
+                    </div>
+                    <div className="post-item__info">
+                      <div className="post-item__header">
+                        <span className="post-item__author">{post.author?.name || 'Unknown'}</span>
+                        {post.createdAt && (
+                          <span className="post-item__time">
+                            {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="post-item__text">{post.content?.substring(0, 80)}{post.content?.length > 80 ? '...' : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Quick Actions bar */}
+      <div className="quick-actions-bar">
+        <Link to="/schedule" className="quick-action-btn"><CalendarDays size={18} /> Create Schedule</Link>
+        <Link to="/employees" className="quick-action-btn"><Users size={18} /> Manage Employees</Link>
+        <Link to="/time-clock" className="quick-action-btn"><Clock size={18} /> Time Clock</Link>
+        <Link to="/labour" className="quick-action-btn"><TrendingUp size={18} /> Labour & Forecasting</Link>
+        <Link to="/payroll" className="quick-action-btn"><DollarSign size={18} /> Payroll</Link>
+        <Link to="/reports" className="quick-action-btn"><BarChart3 size={18} /> Reports</Link>
       </div>
     </div>
   );

@@ -51,3 +51,27 @@ button {
 input, select, textarea {
   font-family: inherit;
 }
+
+/* Global page header: hide title/subtitle since TopHeader provides them */
+.page-header .page-title,
+.page-header .page-subtitle {
+  display: none;
+}
+
+.page-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+/* Hide the title-wrapping div */
+.page-header > div:first-child:has(.page-title) {
+  display: none;
+}
+
+/* When page-header only had title (no buttons), collapse it entirely */
+.page-header:not(:has(.btn)) {
+  display: none;
+}
