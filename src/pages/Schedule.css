@@ -493,13 +493,6 @@
   display: flex;
   align-items: center;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.schedule-shift:hover .schedule-shift__checkbox,
-.schedule-shift--selected .schedule-shift__checkbox {
-  opacity: 1;
 }
 
 .schedule-shift__checkbox input[type="checkbox"] {

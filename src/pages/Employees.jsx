@@ -173,7 +173,7 @@ export default function Employees() {
                     <Shield size={10} /> {ACCESS_LABELS[emp.accessLevel || 'employee']}
                   </span>
                 </div>
-                {locNames.length > 1 && (
+                {locNames.length > 0 && (
                   <div className="employee-card__locations">
                     <MapPin size={11} /> {locNames.join(', ')}
                   </div>

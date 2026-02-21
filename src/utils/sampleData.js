@@ -42,7 +42,7 @@ export function generateSampleData() {
         const template = shiftTemplates[Math.floor(Math.random() * shiftTemplates.length)];
         const start = setMinutes(setHours(day, template.startHour), template.startMin);
         const end = setMinutes(setHours(day, template.endHour), template.endMin);
-        shifts.push({ id: String(shiftId++), employeeId: emp.id, start: start.toISOString(), end: end.toISOString(), position: emp.roles[0], notes: '', status: 'scheduled' });
+        shifts.push({ id: String(shiftId++), employeeId: emp.id, start: start.toISOString(), end: end.toISOString(), position: emp.roles[0], notes: '', status: 'draft' });
       }
     });
   }

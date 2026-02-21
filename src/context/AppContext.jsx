@@ -44,6 +44,11 @@ function loadState() {
         bankInfo: e.bankInfo || null,
         ptoBalance: e.ptoBalance || { sick: 10, vacation: 10, personal: 3 },
       }));
+      // Migrate shifts: normalize status to 'draft' or 'published'
+      data.shifts = (data.shifts || []).map((s) => ({
+        ...s,
+        status: s.status === 'published' ? 'published' : 'draft',
+      }));
       data.locations = data.locations.map((l) => ({
         ...l,
         lat: l.lat || null,
