@@ -5,6 +5,7 @@ import { generateId } from '../utils/helpers';
 const AppContext = createContext(null);
 
 const STORAGE_KEY = 'clock-app-data';
+const DATA_VERSION = 2; // Increment when sample data changes significantly
 
 // Access level hierarchy (higher index = more access)
 export const ACCESS_LEVELS = ['employee', 'manager', 'location_admin', 'master_admin'];
@@ -24,9 +25,14 @@ function loadState() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const data = JSON.parse(saved);
+      // Force refresh when data version changes (new features added)
+      if (!data._version || data._version < DATA_VERSION) {
+        const fresh = generateSampleData();
+        return { ...fresh, _version: DATA_VERSION };
+      }
       if (!data.locations) {
         const fresh = generateSampleData();
-        return { ...fresh, employees: data.employees || fresh.employees, shifts: data.shifts || fresh.shifts, positions: data.positions || fresh.positions, timeEntries: data.timeEntries || fresh.timeEntries };
+        return { ...fresh, _version: DATA_VERSION, employees: data.employees || fresh.employees, shifts: data.shifts || fresh.shifts, positions: data.positions || fresh.positions, timeEntries: data.timeEntries || fresh.timeEntries };
       }
       if (!data.absences) data.absences = [];
       if (!data.salesEntries) data.salesEntries = [];
@@ -92,12 +98,12 @@ function loadState() {
         laborBudgetMax: l.laborBudgetMax ?? (l.targetLaborPercent ? l.targetLaborPercent + 5 : 35),
         laborBudgetWarning: l.laborBudgetWarning ?? (l.targetLaborPercent || 30),
       }));
-      return data;
+      return { ...data, _version: DATA_VERSION };
     }
   } catch (e) {
     // ignore
   }
-  return generateSampleData();
+  return { ...generateSampleData(), _version: DATA_VERSION };
 }
 
 function saveState(state) {
@@ -410,7 +416,7 @@ function reducer(state, action) {
         employees: state.employees.map((e) => ({ ...e, groups: (e.groups || []).filter((g) => g !== action.payload) })),
       };
     case 'RESET_DATA':
-      return generateSampleData();
+      return { ...generateSampleData(), _version: DATA_VERSION };
     default:
       return state;
   }

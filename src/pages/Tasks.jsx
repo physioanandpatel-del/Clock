@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, hasAccess } from '../context/AppContext';
 import {
   ListTodo, Plus, X, Trash2, CheckSquare, Square, PlusCircle, Clipboard, Edit2, Copy,
   Sunrise, Sunset, CalendarCheck, GraduationCap, ClipboardList, Send, Star, MessageSquare,
@@ -20,9 +20,12 @@ const TEMPLATE_TYPE_LABELS = { opening: 'Opening', closing: 'Closing', weekly: '
 export default function Tasks() {
   const { state, dispatch } = useApp();
   const {
-    tasks, employees, currentLocationId, taskTemplates = [],
+    tasks, employees, currentLocationId, currentUserId, taskTemplates = [],
     trainingPrograms = [], trainingAssignments = [], surveyTemplates = [], surveyResponses = [],
   } = state;
+  const currentUser = employees.find((e) => e.id === currentUserId);
+  const userAccess = currentUser?.accessLevel || 'employee';
+  const isManager = hasAccess(userAccess, 'manager');
 
   const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationTasks = useMemo(() => tasks.filter((t) => t.locationId === currentLocationId), [tasks, currentLocationId]);
@@ -69,17 +72,33 @@ export default function Tasks() {
   const [sendEmployeeId, setSendEmployeeId] = useState('');
   const [viewingResponses, setViewingResponses] = useState(null);
 
+  // Employee-filtered data
+  const visibleTasks = useMemo(() => {
+    if (isManager) return locationTasks;
+    return locationTasks.filter((t) => t.assigneeId === currentUserId);
+  }, [locationTasks, isManager, currentUserId]);
+
+  const myTrainingAssignments = useMemo(() => {
+    if (isManager) return locationAssignments;
+    return locationAssignments.filter((a) => a.employeeId === currentUserId);
+  }, [locationAssignments, isManager, currentUserId]);
+
+  const mySurveyResponses = useMemo(() => {
+    if (isManager) return locationSurveyResponses;
+    return locationSurveyResponses.filter((r) => r.employeeId === currentUserId);
+  }, [locationSurveyResponses, isManager, currentUserId]);
+
   const filtered = useMemo(() => {
-    return locationTasks
+    return visibleTasks
       .filter((t) => !filterStatus || t.status === filterStatus)
       .sort((a, b) => { const order = { in_progress: 0, pending: 1, completed: 2 }; return (order[a.status] ?? 1) - (order[b.status] ?? 1); });
-  }, [locationTasks, filterStatus]);
+  }, [visibleTasks, filterStatus]);
 
   const counts = useMemo(() => {
     let pending = 0, inProgress = 0, completed = 0;
-    locationTasks.forEach((t) => { if (t.status === 'pending') pending++; else if (t.status === 'in_progress') inProgress++; else completed++; });
-    return { pending, inProgress, completed, total: locationTasks.length };
-  }, [locationTasks]);
+    visibleTasks.forEach((t) => { if (t.status === 'pending') pending++; else if (t.status === 'in_progress') inProgress++; else completed++; });
+    return { pending, inProgress, completed, total: visibleTasks.length };
+  }, [visibleTasks]);
 
   // ===== TASK HANDLERS =====
   function handleAddTask(e) {
@@ -303,26 +322,27 @@ export default function Tasks() {
   // ===== Computed data for Training tab =====
   const trainingStats = useMemo(() => {
     let assigned = 0, inProgress = 0, completed = 0;
-    locationAssignments.forEach((a) => {
+    myTrainingAssignments.forEach((a) => {
       if (a.status === 'completed') completed++;
       else if (a.status === 'in_progress') inProgress++;
       else assigned++;
     });
-    return { assigned, inProgress, completed, total: locationAssignments.length };
-  }, [locationAssignments]);
+    return { assigned, inProgress, completed, total: myTrainingAssignments.length };
+  }, [myTrainingAssignments]);
 
   // ===== Computed data for Surveys tab =====
   const surveyStats = useMemo(() => {
     let pending = 0, completed = 0;
-    locationSurveyResponses.forEach((r) => {
+    mySurveyResponses.forEach((r) => {
       if (r.status === 'completed') completed++;
       else pending++;
     });
-    return { pending, completed, total: locationSurveyResponses.length };
-  }, [locationSurveyResponses]);
+    return { pending, completed, total: mySurveyResponses.length };
+  }, [mySurveyResponses]);
 
   // Header action button
   const headerAction = () => {
+    if (!isManager) return null; // Employees don't get create buttons
     if (activeTab === 'tasks') return <button className="btn btn--primary" onClick={() => { setFormData({ title: '', assigneeId: '', dueDate: '' }); setShowModal(true); }}><Plus size={16} /> Add Task</button>;
     if (activeTab === 'templates') return <button className="btn btn--primary" onClick={openNewTemplate}><Plus size={16} /> New Template</button>;
     if (activeTab === 'training') return <button className="btn btn--primary" onClick={openNewTraining}><Plus size={16} /> New Program</button>;
@@ -334,8 +354,12 @@ export default function Tasks() {
     <div className="tasks-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tasks & Training</h1>
-          <p className="page-subtitle">{counts.total} tasks &middot; {locationPrograms.length} programs &middot; {locationSurveyTemplates.length} surveys</p>
+          <h1 className="page-title">{isManager ? 'Tasks & Training' : 'My Tasks & Training'}</h1>
+          <p className="page-subtitle">
+            {counts.total} task{counts.total !== 1 ? 's' : ''}
+            {' '}&middot; {myTrainingAssignments.length} training
+            {isManager && <> &middot; {locationSurveyTemplates.length} surveys</>}
+          </p>
         </div>
         <div className="tasks-header-actions">{headerAction()}</div>
       </div>
@@ -343,17 +367,26 @@ export default function Tasks() {
       {/* Tab Toggle */}
       <div className="tasks-tabs">
         <button className={`tasks-tab ${activeTab === 'tasks' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('tasks')}>
-          <ListTodo size={16} /> Tasks ({counts.total})
+          <ListTodo size={16} /> {isManager ? 'Tasks' : 'My Tasks'} ({counts.total})
         </button>
-        <button className={`tasks-tab ${activeTab === 'templates' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('templates')}>
-          <Clipboard size={16} /> Templates ({locationTemplates.length})
-        </button>
+        {isManager && (
+          <button className={`tasks-tab ${activeTab === 'templates' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('templates')}>
+            <Clipboard size={16} /> Templates ({locationTemplates.length})
+          </button>
+        )}
         <button className={`tasks-tab ${activeTab === 'training' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('training')}>
-          <GraduationCap size={16} /> Training ({locationAssignments.length})
+          <GraduationCap size={16} /> {isManager ? 'Training' : 'My Training'} ({myTrainingAssignments.length})
         </button>
-        <button className={`tasks-tab ${activeTab === 'surveys' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('surveys')}>
-          <ClipboardList size={16} /> Surveys ({locationSurveyTemplates.length})
-        </button>
+        {isManager && (
+          <button className={`tasks-tab ${activeTab === 'surveys' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('surveys')}>
+            <ClipboardList size={16} /> Surveys ({locationSurveyTemplates.length})
+          </button>
+        )}
+        {!isManager && mySurveyResponses.filter((r) => r.status === 'pending').length > 0 && (
+          <button className={`tasks-tab ${activeTab === 'surveys' ? 'tasks-tab--active' : ''}`} onClick={() => setActiveTab('surveys')}>
+            <ClipboardList size={16} /> Surveys ({mySurveyResponses.filter((r) => r.status === 'pending').length})
+          </button>
+        )}
       </div>
 
       {/* ===== TASKS VIEW ===== */}
@@ -384,11 +417,17 @@ export default function Tasks() {
                   <div key={task.id} className={`task-card task-card--${task.status}`}>
                     <div className="task-card__header">
                       <div className="task-card__title-row">
-                        <select className="task-status-select" value={task.status} onChange={(e) => handleStatusChange(task.id, e.target.value)}>
-                          <option value="pending">Pending</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                        </select>
+                        {isManager ? (
+                          <select className="task-status-select" value={task.status} onChange={(e) => handleStatusChange(task.id, e.target.value)}>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        ) : (
+                          <span className={`task-status-badge task-status-badge--${task.status}`}>
+                            {task.status === 'in_progress' ? 'In Progress' : task.status === 'completed' ? 'Done' : 'Pending'}
+                          </span>
+                        )}
                         <h3 className={`task-card__title ${task.status === 'completed' ? 'task-card__title--done' : ''}`}>{task.title}</h3>
                         {linkedTemplate && (
                           <span className={`template-badge template-badge--${linkedTemplate.type}`}>
@@ -396,7 +435,7 @@ export default function Tasks() {
                           </span>
                         )}
                       </div>
-                      <button className="btn btn--icon btn--sm" onClick={() => handleDeleteTask(task.id)}><Trash2 size={14} /></button>
+                      {isManager && <button className="btn btn--icon btn--sm" onClick={() => handleDeleteTask(task.id)}><Trash2 size={14} /></button>}
                     </div>
                     <div className="task-card__meta">
                       {assignee ? (
@@ -498,6 +537,62 @@ export default function Tasks() {
             </div>
           </div>
 
+          {/* EMPLOYEE TRAINING VIEW: shows only their assignments */}
+          {!isManager && (
+            <div className="training-programs-list">
+              {myTrainingAssignments.length === 0 ? (
+                <div className="card"><div className="card__body"><div className="empty-state"><GraduationCap size={40} className="empty-state__icon" /><p>No training assigned to you yet.</p></div></div></div>
+              ) : (
+                myTrainingAssignments.map((assignment) => {
+                  const program = locationPrograms.find((p) => p.id === assignment.programId);
+                  if (!program) return null;
+                  const progress = program.modules.length > 0 ? Math.round((assignment.completedModules.length / program.modules.length) * 100) : 0;
+                  return (
+                    <div key={assignment.id} className={`training-card ${assignment.status === 'completed' ? 'training-card--completed' : ''}`}>
+                      <div className="training-card__header">
+                        <div className="training-card__title-row">
+                          <BookOpen size={18} className="training-card__icon" />
+                          <h3 className="training-card__name">{program.name}</h3>
+                          <span className={`training-status-badge training-status-badge--${assignment.status}`}>
+                            {assignment.status === 'completed' ? 'Completed' : assignment.status === 'in_progress' ? 'In Progress' : 'Assigned'}
+                          </span>
+                        </div>
+                        <div className="training-assignment__right">
+                          <span className="training-assignment__progress-text">{assignment.completedModules.length}/{program.modules.length}</span>
+                          <div className="training-assignment__progress-bar" style={{ width: 100 }}>
+                            <div className="training-assignment__progress-fill" style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="training-card__modules">
+                        {program.modules.map((mod) => {
+                          const done = assignment.completedModules.includes(mod.id);
+                          return (
+                            <label key={mod.id} className={`training-module-check ${done ? 'training-module-check--done' : ''}`}>
+                              <button className="subtask__check" onClick={() => assignment.status !== 'completed' && handleToggleModule(assignment.id, mod.id)} disabled={assignment.status === 'completed'}>
+                                {done ? <CheckSquare size={15} /> : <Square size={15} />}
+                              </button>
+                              <span>{mod.text}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {assignment.status !== 'completed' && progress === 100 && (
+                        <div className="training-card__footer">
+                          <button className="btn btn--primary btn--sm" onClick={() => handleCompleteTraining(assignment.id)}>
+                            <CheckSquare size={14} /> Mark Complete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* MANAGER TRAINING VIEW: full program management */}
+          {isManager && (
           <div className="training-programs-list">
             {locationPrograms.length === 0 ? (
               <div className="card"><div className="card__body"><div className="empty-state"><GraduationCap size={40} className="empty-state__icon" /><p>No training programs yet. Create one to track employee progress.</p></div></div></div>
@@ -602,6 +697,7 @@ export default function Tasks() {
               })
             )}
           </div>
+          )}
         </>
       )}
 

@@ -1,18 +1,28 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useApp, hasAccess, ACCESS_LABELS } from '../context/AppContext';
 import {
   Users, Clock, DollarSign, CalendarDays, TrendingUp, AlertCircle,
   Target, MapPin, CalendarOff, ListTodo, MessageSquare, ArrowRight,
-  CheckCircle2, AlertTriangle, BarChart3, Cake, Award
+  CheckCircle2, AlertTriangle, BarChart3, Cake, Award, GraduationCap,
+  ClipboardList, Repeat, BookOpen, Star, Calendar,
 } from 'lucide-react';
-import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval, formatDistanceToNow, differenceInYears, addDays } from 'date-fns';
+import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval, formatDistanceToNow, differenceInYears, addDays, isBefore, isAfter } from 'date-fns';
 import { formatTime, formatDuration, getInitials, calculateLaborCost } from '../utils/helpers';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const { state } = useApp();
-  const { employees, shifts, timeEntries, locations, currentLocationId, salesEntries, absences, tasks, posts } = state;
+  const {
+    employees, shifts, timeEntries, locations, currentLocationId, salesEntries,
+    absences, tasks, posts, currentUserId,
+    trainingPrograms = [], trainingAssignments = [], surveyTemplates = [], surveyResponses = [],
+    shiftSwaps = [],
+  } = state;
+
+  const currentUser = employees.find((e) => e.id === currentUserId);
+  const userAccess = currentUser?.accessLevel || 'employee';
+  const isManager = hasAccess(userAccess, 'manager');
 
   const currentLocation = locations.find((l) => l.id === currentLocationId);
   const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
@@ -22,6 +32,7 @@ export default function Dashboard() {
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
+  // ===== MANAGER STATS =====
   const stats = useMemo(() => {
     const locShifts = shifts.filter((s) => locationEmpIds.has(s.employeeId));
     const todayShifts = locShifts.filter((s) => isToday(parseISO(s.start)));
@@ -38,6 +49,7 @@ export default function Dashboard() {
     const laborPercent = weekSales > 0 ? (weekLabor / weekSales) * 100 : 0;
     const pendingAbsences = absences.filter((a) => a.status === 'pending' && locationEmpIds.has(a.employeeId));
     const draftShifts = locShifts.filter((s) => s.status === 'draft');
+    const openSwaps = (shiftSwaps || []).filter((sw) => sw.status === 'open' || sw.status === 'claimed');
 
     return {
       totalEmployees: locationEmployees.length,
@@ -49,9 +61,62 @@ export default function Dashboard() {
       laborPercent,
       pendingAbsences: pendingAbsences.length,
       draftShifts: draftShifts.length,
+      openSwaps: openSwaps.length,
     };
-  }, [locationEmployees, locationEmpIds, shifts, timeEntries, salesEntries, absences, currentLocationId, weekStart, weekEnd]);
+  }, [locationEmployees, locationEmpIds, shifts, timeEntries, salesEntries, absences, shiftSwaps, currentLocationId, weekStart, weekEnd]);
 
+  // ===== EMPLOYEE PERSONAL DATA =====
+  const myShiftsToday = useMemo(
+    () => shifts
+      .filter((s) => s.employeeId === currentUserId && isToday(parseISO(s.start)))
+      .sort((a, b) => new Date(a.start) - new Date(b.start)),
+    [shifts, currentUserId]
+  );
+
+  const myUpcomingShifts = useMemo(
+    () => shifts
+      .filter((s) => s.employeeId === currentUserId && isAfter(parseISO(s.start), today) && !isToday(parseISO(s.start)))
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .slice(0, 5),
+    [shifts, currentUserId, today]
+  );
+
+  const myTasks = useMemo(
+    () => tasks.filter((t) => t.assigneeId === currentUserId && t.status !== 'completed').slice(0, 5),
+    [tasks, currentUserId]
+  );
+
+  const myTraining = useMemo(() => {
+    return trainingAssignments
+      .filter((a) => a.employeeId === currentUserId && a.status !== 'completed')
+      .map((a) => {
+        const program = trainingPrograms.find((p) => p.id === a.programId);
+        return { ...a, program };
+      })
+      .filter((a) => a.program);
+  }, [trainingAssignments, trainingPrograms, currentUserId]);
+
+  const mySurveys = useMemo(() => {
+    return surveyResponses
+      .filter((r) => r.employeeId === currentUserId && r.status === 'pending')
+      .map((r) => {
+        const template = surveyTemplates.find((s) => s.id === r.surveyId);
+        return { ...r, template };
+      })
+      .filter((r) => r.template);
+  }, [surveyResponses, surveyTemplates, currentUserId]);
+
+  const myAbsences = useMemo(
+    () => absences.filter((a) => a.employeeId === currentUserId && a.status === 'pending'),
+    [absences, currentUserId]
+  );
+
+  const myActiveClockIn = useMemo(
+    () => timeEntries.find((t) => t.employeeId === currentUserId && t.status === 'active'),
+    [timeEntries, currentUserId]
+  );
+
+  // ===== SHARED DATA =====
   const todayShifts = useMemo(
     () =>
       shifts
@@ -79,8 +144,8 @@ export default function Dashboard() {
   );
 
   const recentTasks = useMemo(
-    () => tasks.filter((t) => t.status !== 'completed').slice(0, 5),
-    [tasks]
+    () => tasks.filter((t) => t.locationId === currentLocationId && t.status !== 'completed').slice(0, 5),
+    [tasks, currentLocationId]
   );
 
   const recentPosts = useMemo(
@@ -91,12 +156,11 @@ export default function Dashboard() {
     [posts, employees]
   );
 
-  // Celebrations: upcoming birthdays and work anniversaries (next 14 days)
+  // Celebrations
   const celebrations = useMemo(() => {
     const items = [];
     const now = new Date();
     locationEmployees.forEach((emp) => {
-      // Birthday check
       if (emp.dateOfBirth) {
         try {
           const dob = new Date(emp.dateOfBirth + 'T00:00:00');
@@ -104,18 +168,11 @@ export default function Dashboard() {
             const checkDate = addDays(now, d);
             if (checkDate.getMonth() === dob.getMonth() && checkDate.getDate() === dob.getDate()) {
               const age = differenceInYears(checkDate, dob);
-              items.push({
-                type: 'birthday',
-                employee: emp,
-                date: checkDate,
-                daysAway: d,
-                detail: d === 0 ? `Turns ${age} today!` : `Turns ${age} in ${d} day${d > 1 ? 's' : ''}`,
-              });
+              items.push({ type: 'birthday', employee: emp, date: checkDate, daysAway: d, detail: d === 0 ? `Turns ${age} today!` : `Turns ${age} in ${d} day${d > 1 ? 's' : ''}` });
             }
           }
         } catch { /* skip */ }
       }
-      // Work anniversary check
       if (emp.hireDate) {
         try {
           const hire = new Date(emp.hireDate + 'T00:00:00');
@@ -123,13 +180,7 @@ export default function Dashboard() {
             const checkDate = addDays(now, d);
             if (checkDate.getMonth() === hire.getMonth() && checkDate.getDate() === hire.getDate() && checkDate.getFullYear() !== hire.getFullYear()) {
               const years = differenceInYears(checkDate, hire);
-              items.push({
-                type: 'anniversary',
-                employee: emp,
-                date: checkDate,
-                daysAway: d,
-                detail: d === 0 ? `${years} year${years > 1 ? 's' : ''} today!` : `${years} year${years > 1 ? 's' : ''} in ${d} day${d > 1 ? 's' : ''}`,
-              });
+              items.push({ type: 'anniversary', employee: emp, date: checkDate, daysAway: d, detail: d === 0 ? `${years} year${years > 1 ? 's' : ''} today!` : `${years} year${years > 1 ? 's' : ''} in ${d} day${d > 1 ? 's' : ''}` });
             }
           }
         } catch { /* skip */ }
@@ -141,6 +192,253 @@ export default function Dashboard() {
   const targetPercent = currentLocation?.targetLaborPercent || 30;
   const isOverTarget = stats.laborPercent > targetPercent + 2;
 
+  // ===== EMPLOYEE DASHBOARD =====
+  if (!isManager) {
+    return (
+      <div className="dashboard">
+        <div className="dash-location-bar">
+          <MapPin size={14} />
+          <span>{currentLocation?.name}</span>
+          <span className="dash-location-bar__sep">&middot;</span>
+          <span>{format(today, 'EEEE, MMMM d, yyyy')}</span>
+        </div>
+
+        {/* Employee greeting */}
+        <div className="dash-greeting">
+          <div className="dash-greeting__avatar" style={{ background: currentUser?.color }}>
+            {currentUser?.photoUrl ? (
+              <img src={currentUser.photoUrl} alt="" className="dash-greeting__photo" />
+            ) : (
+              getInitials(currentUser?.name || '')
+            )}
+          </div>
+          <div>
+            <h1 className="dash-greeting__name">Hi, {currentUser?.preferredName || currentUser?.name?.split(' ')[0]}</h1>
+            <p className="dash-greeting__role">{(currentUser?.roles || []).join(', ')} &middot; {ACCESS_LABELS[userAccess]}</p>
+          </div>
+          {myActiveClockIn && (
+            <div className="dash-greeting__clock-badge">
+              <Clock size={14} /> Clocked in since {formatTime(myActiveClockIn.clockIn)}
+            </div>
+          )}
+        </div>
+
+        {/* Employee stats row */}
+        <div className="stats-grid stats-grid--3">
+          <div className="stat-card">
+            <div className="stat-card__icon stat-card__icon--blue"><CalendarDays size={22} /></div>
+            <div className="stat-card__info">
+              <span className="stat-card__label">My Shifts Today</span>
+              <span className="stat-card__value">{myShiftsToday.length}</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card__icon stat-card__icon--green"><ListTodo size={22} /></div>
+            <div className="stat-card__info">
+              <span className="stat-card__label">My Open Tasks</span>
+              <span className="stat-card__value">{myTasks.length}</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card__icon stat-card__icon--purple"><GraduationCap size={22} /></div>
+            <div className="stat-card__info">
+              <span className="stat-card__label">Training Active</span>
+              <span className="stat-card__value">{myTraining.length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending surveys alert */}
+        {(mySurveys.length > 0 || myAbsences.length > 0) && (
+          <div className="dash-alerts">
+            {mySurveys.length > 0 && (
+              <Link to="/tasks" className="dash-alert dash-alert--info">
+                <ClipboardList size={16} />
+                <span>You have {mySurveys.length} pending survey{mySurveys.length > 1 ? 's' : ''} to complete</span>
+                <ArrowRight size={14} />
+              </Link>
+            )}
+            {myAbsences.length > 0 && (
+              <Link to="/absences" className="dash-alert dash-alert--warning">
+                <CalendarOff size={16} />
+                <span>{myAbsences.length} absence request{myAbsences.length > 1 ? 's' : ''} pending approval</span>
+                <ArrowRight size={14} />
+              </Link>
+            )}
+          </div>
+        )}
+
+        <div className="dashboard__grid">
+          {/* My Shifts Today */}
+          <div className="card">
+            <div className="card__header">
+              <h2 className="card__title"><CalendarDays size={18} /> My Shifts Today</h2>
+              <Link to="/schedule" className="card__header-link">Full Schedule</Link>
+            </div>
+            <div className="card__body">
+              {myShiftsToday.length === 0 ? (
+                <div className="empty-state"><CalendarDays size={40} className="empty-state__icon" /><p>No shifts today — enjoy your day off!</p></div>
+              ) : (
+                <div className="shift-list">
+                  {myShiftsToday.map((shift) => (
+                    <div key={shift.id} className="shift-item shift-item--highlight">
+                      <div className="shift-item__avatar" style={{ background: currentUser?.color }}>
+                        <Calendar size={16} />
+                      </div>
+                      <div className="shift-item__info">
+                        <div className="shift-item__name">{shift.position}</div>
+                        <div className="shift-item__meta">{formatTime(shift.start)} - {formatTime(shift.end)}</div>
+                      </div>
+                      <div className="shift-item__right">
+                        <span className="shift-item__duration">{formatDuration(shift.start, shift.end)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* My Upcoming Shifts */}
+          <div className="card">
+            <div className="card__header">
+              <h2 className="card__title"><Calendar size={18} /> Upcoming Shifts</h2>
+              <Link to="/schedule" className="card__header-link">View All</Link>
+            </div>
+            <div className="card__body">
+              {myUpcomingShifts.length === 0 ? (
+                <div className="empty-state"><Calendar size={40} className="empty-state__icon" /><p>No upcoming shifts scheduled</p></div>
+              ) : (
+                <div className="shift-list">
+                  {myUpcomingShifts.map((shift) => (
+                    <div key={shift.id} className="shift-item">
+                      <div className="shift-item__avatar" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                        <Calendar size={16} />
+                      </div>
+                      <div className="shift-item__info">
+                        <div className="shift-item__name">{format(parseISO(shift.start), 'EEE, MMM d')}</div>
+                        <div className="shift-item__meta">{shift.position} &middot; {formatTime(shift.start)} - {formatTime(shift.end)}</div>
+                      </div>
+                      <span className="shift-item__duration">{formatDuration(shift.start, shift.end)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* My Tasks */}
+          <div className="card">
+            <div className="card__header">
+              <h2 className="card__title"><ListTodo size={18} /> My Tasks</h2>
+              <Link to="/tasks" className="card__header-link">View All</Link>
+            </div>
+            <div className="card__body">
+              {myTasks.length === 0 ? (
+                <div className="empty-state"><CheckCircle2 size={40} className="empty-state__icon" /><p>All caught up!</p></div>
+              ) : (
+                <div className="task-list">
+                  {myTasks.map((task) => (
+                    <div key={task.id} className="task-item">
+                      <div className={`task-item__status task-item__status--${task.status}`} />
+                      <div className="task-item__info">
+                        <div className="task-item__title">{task.title}</div>
+                        {task.subtasks && (
+                          <div className="task-item__meta">{task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks</div>
+                        )}
+                      </div>
+                      <span className={`badge badge--${task.status === 'in_progress' ? 'blue' : 'pending'}`}>
+                        {task.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* My Training */}
+          <div className="card">
+            <div className="card__header">
+              <h2 className="card__title"><GraduationCap size={18} /> My Training</h2>
+              <Link to="/tasks" className="card__header-link">View All</Link>
+            </div>
+            <div className="card__body">
+              {myTraining.length === 0 ? (
+                <div className="empty-state"><GraduationCap size={40} className="empty-state__icon" /><p>No active training</p></div>
+              ) : (
+                <div className="shift-list">
+                  {myTraining.map((assignment) => {
+                    const progress = assignment.program.modules.length > 0
+                      ? Math.round((assignment.completedModules.length / assignment.program.modules.length) * 100) : 0;
+                    return (
+                      <div key={assignment.id} className="shift-item">
+                        <div className="shift-item__avatar" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                          <BookOpen size={16} />
+                        </div>
+                        <div className="shift-item__info">
+                          <div className="shift-item__name">{assignment.program.name}</div>
+                          <div className="shift-item__meta">
+                            {assignment.completedModules.length}/{assignment.program.modules.length} modules &middot; {progress}%
+                          </div>
+                        </div>
+                        <div className="emp-training-progress">
+                          <div className="emp-training-progress__bar">
+                            <div className="emp-training-progress__fill" style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Newsfeed */}
+          <div className="card">
+            <div className="card__header">
+              <h2 className="card__title"><MessageSquare size={18} /> Recent Posts</h2>
+              <Link to="/newsfeed" className="card__header-link">View All</Link>
+            </div>
+            <div className="card__body">
+              {recentPosts.length === 0 ? (
+                <div className="empty-state"><MessageSquare size={40} className="empty-state__icon" /><p>No posts yet</p></div>
+              ) : (
+                <div className="post-list">
+                  {recentPosts.map((post) => (
+                    <div key={post.id} className="post-item">
+                      <div className="post-item__avatar" style={{ background: post.author?.color || '#94a3b8' }}>
+                        {post.author ? getInitials(post.author.name) : '?'}
+                      </div>
+                      <div className="post-item__info">
+                        <div className="post-item__header">
+                          <span className="post-item__author">{post.author?.name || 'Unknown'}</span>
+                          {post.createdAt && <span className="post-item__time">{formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}</span>}
+                        </div>
+                        <div className="post-item__text">{post.content?.substring(0, 80)}{post.content?.length > 80 ? '...' : ''}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions for employees */}
+        <div className="quick-actions-bar">
+          <Link to="/schedule" className="quick-action-btn"><CalendarDays size={18} /> My Schedule</Link>
+          <Link to="/time-clock" className="quick-action-btn"><Clock size={18} /> Time Clock</Link>
+          <Link to="/absences" className="quick-action-btn"><CalendarOff size={18} /> Request Time Off</Link>
+          <Link to="/tasks" className="quick-action-btn"><ListTodo size={18} /> My Tasks</Link>
+          <Link to="/newsfeed" className="quick-action-btn"><MessageSquare size={18} /> Newsfeed</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== MANAGER/OWNER DASHBOARD =====
   return (
     <div className="dashboard">
       <div className="dash-location-bar">
@@ -184,12 +482,19 @@ export default function Dashboard() {
       </div>
 
       {/* Alerts banner */}
-      {(stats.pendingAbsences > 0 || stats.draftShifts > 0 || (isOverTarget && stats.weekSales > 0)) && (
+      {(stats.pendingAbsences > 0 || stats.draftShifts > 0 || stats.openSwaps > 0 || (isOverTarget && stats.weekSales > 0)) && (
         <div className="dash-alerts">
           {stats.pendingAbsences > 0 && (
             <Link to="/absences" className="dash-alert dash-alert--warning">
               <CalendarOff size={16} />
               <span>{stats.pendingAbsences} pending absence request{stats.pendingAbsences > 1 ? 's' : ''}</span>
+              <ArrowRight size={14} />
+            </Link>
+          )}
+          {stats.openSwaps > 0 && (
+            <Link to="/schedule" className="dash-alert dash-alert--info">
+              <Repeat size={16} />
+              <span>{stats.openSwaps} shift swap{stats.openSwaps > 1 ? 's' : ''} need attention</span>
               <ArrowRight size={14} />
             </Link>
           )}
@@ -326,9 +631,7 @@ export default function Dashboard() {
                     <div className="task-item__info">
                       <div className="task-item__title">{task.title}</div>
                       {task.subtasks && (
-                        <div className="task-item__meta">
-                          {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks done
-                        </div>
+                        <div className="task-item__meta">{task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks done</div>
                       )}
                     </div>
                     <span className={`badge badge--${task.status === 'in_progress' ? 'blue' : 'pending'}`}>
@@ -345,9 +648,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="card__header">
             <h2 className="card__title"><TrendingUp size={18} /> Weekly Overview</h2>
-            <Link to="/reports" className="card__header-link">
-              <BarChart3 size={16} style={{ color: 'var(--text-light)' }} />
-            </Link>
+            <Link to="/reports" className="card__header-link"><BarChart3 size={16} style={{ color: 'var(--text-light)' }} /></Link>
           </div>
           <div className="card__body">
             <div className="weekly-stats">
@@ -377,10 +678,7 @@ export default function Dashboard() {
                     className={`labor-target-bar__fill ${isOverTarget ? 'labor-target-bar__fill--danger' : 'labor-target-bar__fill--success'}`}
                     style={{ width: `${Math.min((stats.laborPercent / (targetPercent * 1.5)) * 100, 100)}%` }}
                   />
-                  <div
-                    className="labor-target-bar__marker"
-                    style={{ left: `${(targetPercent / (targetPercent * 1.5)) * 100}%` }}
-                  />
+                  <div className="labor-target-bar__marker" style={{ left: `${(targetPercent / (targetPercent * 1.5)) * 100}%` }} />
                 </div>
               </div>
             )}
@@ -406,11 +704,7 @@ export default function Dashboard() {
                     <div className="post-item__info">
                       <div className="post-item__header">
                         <span className="post-item__author">{post.author?.name || 'Unknown'}</span>
-                        {post.createdAt && (
-                          <span className="post-item__time">
-                            {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
-                          </span>
-                        )}
+                        {post.createdAt && <span className="post-item__time">{formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}</span>}
                       </div>
                       <div className="post-item__text">{post.content?.substring(0, 80)}{post.content?.length > 80 ? '...' : ''}</div>
                     </div>
@@ -425,19 +719,12 @@ export default function Dashboard() {
       {/* Celebrations */}
       {celebrations.length > 0 && (
         <div className="celebrations-bar">
-          <div className="celebrations-bar__header">
-            <Cake size={18} />
-            <h3 className="celebrations-bar__title">Celebrations</h3>
-          </div>
+          <div className="celebrations-bar__header"><Cake size={18} /><h3 className="celebrations-bar__title">Celebrations</h3></div>
           <div className="celebrations-bar__list">
             {celebrations.map((item, i) => (
               <div key={i} className={`celebration-item ${item.daysAway === 0 ? 'celebration-item--today' : ''}`}>
                 <div className="celebration-item__icon" style={{ background: item.employee.color }}>
-                  {item.employee.photoUrl ? (
-                    <img src={item.employee.photoUrl} alt="" className="celebration-item__photo" />
-                  ) : (
-                    getInitials(item.employee.name)
-                  )}
+                  {item.employee.photoUrl ? <img src={item.employee.photoUrl} alt="" className="celebration-item__photo" /> : getInitials(item.employee.name)}
                 </div>
                 <div className="celebration-item__info">
                   <span className="celebration-item__name">{item.employee.preferredName || item.employee.name}</span>

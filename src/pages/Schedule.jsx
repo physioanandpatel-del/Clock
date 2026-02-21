@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, hasAccess } from '../context/AppContext';
 import {
   format,
   addDays,
@@ -39,6 +39,9 @@ export default function Schedule() {
   const { employees, shifts, positions, currentLocationId, locations, salesEntries, taskTemplates = [], shiftSwaps = [], currentUserId } = state;
   const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
   const currentLocation = locations.find((l) => l.id === currentLocationId);
+  const currentUser = employees.find((e) => e.id === currentUserId);
+  const userAccess = currentUser?.accessLevel || 'employee';
+  const isManager = hasAccess(userAccess, 'manager');
 
   // Location labor budget settings
   const targetPercent = currentLocation?.targetLaborPercent || 30;
@@ -465,6 +468,212 @@ export default function Schedule() {
     });
   }, [shifts, locationEmployees, employees]);
 
+  // ===== Employee's own shifts for the week =====
+  const myWeekShifts = useMemo(() => {
+    return shifts
+      .filter((s) => s.employeeId === currentUserId && s.status === 'published')
+      .filter((s) => weekDays.some((d) => isSameDay(parseISO(s.start), d)))
+      .sort((a, b) => new Date(a.start) - new Date(b.start));
+  }, [shifts, currentUserId, weekDays]);
+
+  const myWeekHours = useMemo(() => {
+    return myWeekShifts.reduce((sum, s) => sum + differenceInHours(parseISO(s.end), parseISO(s.start)), 0);
+  }, [myWeekShifts]);
+
+  // ===== EMPLOYEE VIEW =====
+  if (!isManager) {
+    return (
+      <div className="schedule-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">My Schedule</h1>
+            <p className="page-subtitle">
+              {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+            </p>
+          </div>
+          <div className="schedule-controls">
+            <div className="week-nav">
+              <button className="btn btn--icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
+                <ChevronLeft size={18} />
+              </button>
+              <button className="btn btn--secondary" onClick={() => setCurrentWeek(new Date())}>
+                Today
+              </button>
+              <button className="btn btn--icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
+                <ChevronRight size={18} />
+              </button>
+            </div>
+            <button className={`btn btn--secondary ${swapCount > 0 ? 'btn--swap-alert' : ''}`} onClick={() => setShowSwapBoard(true)}>
+              <Repeat size={16} /> Swap Board {swapCount > 0 && <span className="swap-count-badge">{swapCount}</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* Employee week summary */}
+        <div className="emp-schedule-summary">
+          <div className="emp-schedule-stat">
+            <span className="emp-schedule-stat__value">{myWeekShifts.length}</span>
+            <span className="emp-schedule-stat__label">Shifts</span>
+          </div>
+          <div className="emp-schedule-stat">
+            <span className="emp-schedule-stat__value">{myWeekHours}h</span>
+            <span className="emp-schedule-stat__label">Hours</span>
+          </div>
+        </div>
+
+        {/* Day-by-day view */}
+        <div className="emp-schedule-days">
+          {weekDays.map((day) => {
+            const dayShifts = myWeekShifts.filter((s) => isSameDay(parseISO(s.start), day));
+            const isToday_ = isSameDay(day, new Date());
+            return (
+              <div key={day.toISOString()} className={`emp-schedule-day ${isToday_ ? 'emp-schedule-day--today' : ''} ${dayShifts.length === 0 ? 'emp-schedule-day--off' : ''}`}>
+                <div className="emp-schedule-day__header">
+                  <span className="emp-schedule-day__name">{format(day, 'EEEE')}</span>
+                  <span className="emp-schedule-day__date">{format(day, 'MMM d')}</span>
+                  {isToday_ && <span className="emp-schedule-day__today-badge">Today</span>}
+                </div>
+                {dayShifts.length === 0 ? (
+                  <div className="emp-schedule-day__off">Day Off</div>
+                ) : (
+                  dayShifts.map((s) => (
+                    <div key={s.id} className="emp-schedule-shift" style={{ borderLeftColor: currentUser?.color }}>
+                      <div className="emp-schedule-shift__time">
+                        <Clock size={14} /> {formatTime(s.start)} - {formatTime(s.end)}
+                      </div>
+                      <div className="emp-schedule-shift__details">
+                        <span className="emp-schedule-shift__position">{s.position}</span>
+                        <span className="emp-schedule-shift__duration">{differenceInHours(parseISO(s.end), parseISO(s.start))}h</span>
+                      </div>
+                      {s.notes && <div className="emp-schedule-shift__notes">{s.notes}</div>}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Swap Board Modal - same for both roles */}
+        {showSwapBoard && (
+          <div className="modal-overlay" onClick={() => setShowSwapBoard(false)}>
+            <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+              <div className="modal__header">
+                <h2 className="modal__title"><Repeat size={18} /> Shift Swap Board</h2>
+                <button className="btn btn--icon" onClick={() => setShowSwapBoard(false)}><X size={18} /></button>
+              </div>
+              <div className="modal__body">
+                <div className="swap-board-header">
+                  <p className="swap-board-desc">Post shifts you need covered. Others pick them up, then a manager approves.</p>
+                  <button className="btn btn--primary btn--sm" onClick={() => { setShowSwapBoard(false); setShowSwapRequestModal(true); }}>
+                    <Plus size={14} /> Post Swap Request
+                  </button>
+                </div>
+                {activeSwaps.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '40px 20px' }}>
+                    <Repeat size={40} className="empty-state__icon" />
+                    <p>No open swap requests</p>
+                  </div>
+                ) : (
+                  <div className="swap-list">
+                    {activeSwaps.map((sw) => (
+                      <div key={sw.id} className={`swap-card swap-card--${sw.status}`}>
+                        <div className="swap-card__shift-info">
+                          <div className="swap-card__avatar" style={{ background: sw.requester?.color || '#94a3b8' }}>
+                            {sw.requester?.photoUrl ? (
+                              <img src={sw.requester.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                            ) : (
+                              getInitials(sw.requester?.name || '?')
+                            )}
+                          </div>
+                          <div className="swap-card__details">
+                            <span className="swap-card__name">{sw.requester?.preferredName || sw.requester?.name}</span>
+                            <span className="swap-card__shift-time">
+                              {sw.shift ? `${format(parseISO(sw.shift.start), 'EEE, MMM d')} - ${formatTime(sw.shift.start)} to ${formatTime(sw.shift.end)}` : 'Shift not found'}
+                            </span>
+                            <span className="swap-card__position">{sw.shift?.position}</span>
+                          </div>
+                        </div>
+                        <div className="swap-card__reason">
+                          <span className="swap-card__reason-label">Reason:</span> {sw.reason}
+                        </div>
+                        <div className="swap-card__actions">
+                          {sw.status === 'open' && sw.requesterId !== currentUserId && (
+                            <button className="btn btn--secondary btn--sm" onClick={() => handleClaimSwap(sw.id)}>
+                              Pick Up Shift
+                            </button>
+                          )}
+                          {sw.status === 'open' && sw.requesterId === currentUserId && (
+                            <button className="btn btn--icon btn--sm" onClick={() => handleCancelSwap(sw.id)} title="Cancel request">
+                              <X size={14} />
+                            </button>
+                          )}
+                          {sw.status === 'claimed' && (
+                            <div className="swap-card__claimed">
+                              <div className="swap-card__claimed-by">
+                                <span className="swap-card__claimed-avatar" style={{ background: sw.claimer?.color || '#94a3b8' }}>
+                                  {getInitials(sw.claimer?.name || '?')}
+                                </span>
+                                <span>{sw.claimer?.preferredName || sw.claimer?.name} wants to pick up</span>
+                              </div>
+                              <span className="badge badge--pending">Awaiting Manager</span>
+                            </div>
+                          )}
+                        </div>
+                        <span className={`swap-status-badge swap-status-badge--${sw.status}`}>
+                          {sw.status === 'open' ? 'Open' : 'Awaiting Approval'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Swap Request Modal */}
+        {showSwapRequestModal && (
+          <div className="modal-overlay" onClick={() => setShowSwapRequestModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal__header">
+                <h2 className="modal__title">Post Swap Request</h2>
+                <button className="btn btn--icon" onClick={() => setShowSwapRequestModal(false)}><X size={18} /></button>
+              </div>
+              <form onSubmit={handlePostSwap}>
+                <div className="modal__body">
+                  <p className="form-hint" style={{ margin: '0 0 16px' }}>Select a shift you need covered. Other team members can pick it up, and a manager will approve.</p>
+                  <div className="form-group">
+                    <label className="form-label">Select Shift</label>
+                    <select className="form-input" value={swapShiftId || ''} onChange={(e) => setSwapShiftId(e.target.value)} required>
+                      <option value="">Choose a shift...</option>
+                      {myUpcomingShifts.filter((s) => s.employeeId === currentUserId).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {format(parseISO(s.start), 'EEE, MMM d')} {formatTime(s.start)}-{formatTime(s.end)} ({s.position})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Reason</label>
+                    <textarea className="form-input form-textarea" value={swapReason} onChange={(e) => setSwapReason(e.target.value)} placeholder="Why do you need this shift covered?" rows={3} required />
+                  </div>
+                </div>
+                <div className="modal__footer">
+                  <div className="modal__footer-right">
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowSwapRequestModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">Post Request</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ===== MANAGER/OWNER VIEW =====
   return (
     <div className="schedule-page">
       <div className="page-header">
