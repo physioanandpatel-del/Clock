@@ -35,7 +35,8 @@ function loadState() {
       if (!data.tasks) data.tasks = [];
       if (!data.currentUserId) data.currentUserId = data.employees?.[0]?.id || '1';
       if (!data.accessLevels) data.accessLevels = ACCESS_LEVELS;
-      // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel
+      if (!data.groups) data.groups = ['Front of House', 'Back of House', 'Management'];
+      // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel + Sling fields
       data.employees = data.employees.map((e) => ({
         ...e,
         locationIds: e.locationIds || (e.locationId ? [e.locationId] : [data.currentLocationId]),
@@ -43,6 +44,18 @@ function loadState() {
         accessLevel: e.accessLevel || 'employee',
         bankInfo: e.bankInfo || null,
         ptoBalance: e.ptoBalance || { sick: 10, vacation: 10, personal: 3 },
+        preferredName: e.preferredName || '',
+        hireDate: e.hireDate || null,
+        dateOfBirth: e.dateOfBirth || '',
+        emergencyContact: e.emergencyContact || null,
+        timezone: e.timezone || 'America/Toronto',
+        countryCode: e.countryCode || '+1',
+        clockPin: e.clockPin || '',
+        timeClockEnabled: e.timeClockEnabled !== undefined ? e.timeClockEnabled : true,
+        groups: e.groups || [],
+        managerIds: e.managerIds || [],
+        payType: e.payType || 'hourly',
+        wages: e.wages || (e.hourlyRate ? (e.roles?.map((r) => ({ position: r, rate: e.hourlyRate, effectiveDate: e.hireDate || '2024-01-01' })) || [{ position: 'General', rate: e.hourlyRate, effectiveDate: '2024-01-01' }]) : []),
       }));
       // Migrate shifts: normalize status to 'draft' or 'published'
       data.shifts = (data.shifts || []).map((s) => ({
@@ -120,6 +133,18 @@ function reducer(state, action) {
         accessLevel: action.payload.accessLevel || 'employee',
         bankInfo: action.payload.bankInfo || null,
         ptoBalance: action.payload.ptoBalance || { sick: 10, vacation: 10, personal: 3 },
+        preferredName: action.payload.preferredName || '',
+        hireDate: action.payload.hireDate || new Date().toISOString().split('T')[0],
+        dateOfBirth: action.payload.dateOfBirth || '',
+        emergencyContact: action.payload.emergencyContact || null,
+        timezone: action.payload.timezone || 'America/Toronto',
+        countryCode: action.payload.countryCode || '+1',
+        clockPin: action.payload.clockPin || '',
+        timeClockEnabled: action.payload.timeClockEnabled !== undefined ? action.payload.timeClockEnabled : true,
+        groups: action.payload.groups || [],
+        managerIds: action.payload.managerIds || [],
+        payType: action.payload.payType || 'hourly',
+        wages: action.payload.wages || [],
       };
       return { ...state, employees: [...state.employees, employee] };
     }
@@ -234,6 +259,15 @@ function reducer(state, action) {
     case 'ADD_POSITION':
       if (state.positions.includes(action.payload)) return state;
       return { ...state, positions: [...state.positions, action.payload] };
+    case 'ADD_GROUP':
+      if (state.groups.includes(action.payload)) return state;
+      return { ...state, groups: [...state.groups, action.payload] };
+    case 'DELETE_GROUP':
+      return {
+        ...state,
+        groups: state.groups.filter((g) => g !== action.payload),
+        employees: state.employees.map((e) => ({ ...e, groups: (e.groups || []).filter((g) => g !== action.payload) })),
+      };
     case 'RESET_DATA':
       return generateSampleData();
     default:
