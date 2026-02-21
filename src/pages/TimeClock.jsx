@@ -7,7 +7,8 @@ import './TimeClock.css';
 
 export default function TimeClock() {
   const { state, dispatch } = useApp();
-  const { employees, timeEntries } = state;
+  const { employees, timeEntries, currentLocationId } = state;
+  const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
 
   const [search, setSearch] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -18,7 +19,7 @@ export default function TimeClock() {
   }, []);
 
   const employeesWithStatus = useMemo(() => {
-    return employees
+    return locationEmployees
       .map((emp) => {
         const activeEntry = timeEntries.find(
           (t) => t.employeeId === emp.id && t.status === 'active'
@@ -40,7 +41,7 @@ export default function TimeClock() {
         (emp) =>
           !search || emp.name.toLowerCase().includes(search.toLowerCase())
       );
-  }, [employees, timeEntries, search]);
+  }, [locationEmployees, timeEntries, search]);
 
   function handleClockIn(employeeId) {
     dispatch({ type: 'CLOCK_IN', payload: { employeeId } });
@@ -68,7 +69,7 @@ export default function TimeClock() {
         </div>
         <div className="timeclock-display__status">
           <span className="badge badge--green">{activeCount} clocked in</span>
-          <span className="badge badge--blue">{employees.length - activeCount} off</span>
+          <span className="badge badge--blue">{locationEmployees.length - activeCount} off</span>
         </div>
       </div>
 

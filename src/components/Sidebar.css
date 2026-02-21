@@ -16,8 +16,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px 20px 16px;
 }
 
 .sidebar__logo {
@@ -31,12 +30,51 @@
   letter-spacing: -0.5px;
 }
 
+.sidebar__location-switch {
+  padding: 0 12px 12px;
+}
+
+.sidebar__location-select {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+.sidebar__location-select option {
+  background: var(--sidebar-bg);
+  color: #fff;
+}
+
+.sidebar__location-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px 12px;
+  font-size: 12px;
+  color: var(--text-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .sidebar__nav {
   flex: 1;
   padding: 12px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
+}
+
+.sidebar__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 8px;
 }
 
 .sidebar__link {

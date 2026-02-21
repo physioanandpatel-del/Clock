@@ -1,0 +1,242 @@
+.labour-page {
+  max-width: 1200px;
+}
+
+.labour-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 12px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.labour-nav__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 220px;
+  text-align: center;
+}
+
+.labour-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card--danger {
+  border-color: var(--danger) !important;
+  background: #fff5f5;
+}
+
+.stat-card--success {
+  border-color: var(--success) !important;
+  background: #f0fdf4;
+}
+
+.stat-card__icon--red {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.labour-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.labour-alert--danger {
+  background: var(--danger-light);
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.labour-alert--warning {
+  background: var(--warning-light);
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.labour-alert--success {
+  background: var(--success-light);
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.labour-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Daily Sales */
+.daily-sales {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.daily-sale-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.daily-sale-day {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  width: 36px;
+}
+
+.daily-sale-date {
+  font-size: 12px;
+  color: var(--text-light);
+  width: 90px;
+}
+
+.daily-sale-bar-wrap {
+  flex: 1;
+  height: 20px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.daily-sale-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+  min-width: 2px;
+  max-width: 100%;
+  transition: width 0.3s ease;
+}
+
+.daily-sale-amount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  width: 70px;
+  text-align: right;
+}
+
+/* Forecasting */
+.forecast-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.forecast-section:last-child {
+  border-bottom: none;
+}
+
+.forecast-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.forecast-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0;
+}
+
+.forecast-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 8px 0;
+}
+
+.forecast-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+}
+
+.forecast-indicator--good {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.forecast-indicator--bad {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 1fr 60px;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  font-size: 13px;
+  align-items: center;
+}
+
+.history-week {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.history-sales {
+  color: var(--text-secondary);
+}
+
+.history-labor {
+  color: var(--text-secondary);
+}
+
+.history-pct {
+  font-weight: 600;
+  text-align: right;
+}
+
+.history-pct--over {
+  color: var(--danger);
+}
+
+.history-pct--ok {
+  color: var(--success);
+}
+
+@media (max-width: 1024px) {
+  .labour-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .labour-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .labour-summary {
+    grid-template-columns: 1fr;
+  }
+}

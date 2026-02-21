@@ -8,7 +8,8 @@ const COLORS = ['#2563eb', '#7c3aed', '#059669', '#dc2626', '#ea580c', '#0891b2'
 
 export default function Employees() {
   const { state, dispatch } = useApp();
-  const { employees, positions } = state;
+  const { employees, positions, currentLocationId } = state;
+  const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
 
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
@@ -24,14 +25,14 @@ export default function Employees() {
   });
 
   const filtered = useMemo(() => {
-    return employees.filter((emp) => {
+    return locationEmployees.filter((emp) => {
       const matchSearch =
         emp.name.toLowerCase().includes(search.toLowerCase()) ||
         emp.email.toLowerCase().includes(search.toLowerCase());
       const matchRole = !filterRole || emp.role === filterRole;
       return matchSearch && matchRole;
     });
-  }, [employees, search, filterRole]);
+  }, [locationEmployees, search, filterRole]);
 
   function openNew() {
     setEditing(null);
@@ -85,7 +86,7 @@ export default function Employees() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Employees</h1>
-          <p className="page-subtitle">{employees.length} team members</p>
+          <p className="page-subtitle">{locationEmployees.length} team members</p>
         </div>
         <button className="btn btn--primary" onClick={openNew}>
           <Plus size={16} /> Add Employee

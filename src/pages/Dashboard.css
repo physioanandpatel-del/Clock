@@ -70,6 +70,16 @@
   color: #7c3aed;
 }
 
+.stat-card__icon--red {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.stat-card--danger {
+  border-color: var(--danger) !important;
+  background: #fff5f5;
+}
+
 .stat-card__info {
   display: flex;
   flex-direction: column;
@@ -149,6 +159,15 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.badge--pending {
+  background: var(--warning-light);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
 }
 
 .badge--green-dot::before {

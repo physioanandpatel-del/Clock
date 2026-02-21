@@ -18,7 +18,8 @@ import './Schedule.css';
 
 export default function Schedule() {
   const { state, dispatch } = useApp();
-  const { employees, shifts, positions } = state;
+  const { employees, shifts, positions, currentLocationId } = state;
+  const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
@@ -37,7 +38,7 @@ export default function Schedule() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const scheduleData = useMemo(() => {
-    return employees.map((emp) => ({
+    return locationEmployees.map((emp) => ({
       employee: emp,
       shifts: weekDays.map((day) =>
         shifts.filter(
@@ -45,17 +46,17 @@ export default function Schedule() {
         )
       ),
     }));
-  }, [employees, shifts, weekDays]);
+  }, [locationEmployees, shifts, weekDays]);
 
   function openNewShift(employeeId, dayIndex) {
     const day = weekDays[dayIndex];
     setEditingShift(null);
     setFormData({
-      employeeId: employeeId || employees[0]?.id || '',
+      employeeId: employeeId || locationEmployees[0]?.id || '',
       date: format(day, 'yyyy-MM-dd'),
       startTime: '09:00',
       endTime: '17:00',
-      position: employees.find((e) => e.id === employeeId)?.role || positions[0] || '',
+      position: locationEmployees.find((e) => e.id === employeeId)?.role || positions[0] || '',
       notes: '',
     });
     setShowModal(true);
@@ -133,7 +134,7 @@ export default function Schedule() {
             onClick={() => {
               setEditingShift(null);
               setFormData({
-                employeeId: employees[0]?.id || '',
+                employeeId: locationEmployees[0]?.id || '',
                 date: format(new Date(), 'yyyy-MM-dd'),
                 startTime: '09:00',
                 endTime: '17:00',
@@ -234,7 +235,7 @@ export default function Schedule() {
                     required
                   >
                     <option value="">Select employee</option>
-                    {employees.map((emp) => (
+                    {locationEmployees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name}
                       </option>
