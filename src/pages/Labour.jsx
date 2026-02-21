@@ -11,6 +11,8 @@ export default function Labour() {
 
   const currentLocation = locations.find((l) => l.id === currentLocationId);
   const targetPercent = currentLocation?.targetLaborPercent || 30;
+  const budgetWarning = currentLocation?.laborBudgetWarning ?? targetPercent;
+  const budgetMax = currentLocation?.laborBudgetMax ?? targetPercent + 5;
 
   const locationEmployees = useMemo(() => employees.filter((e) => e.locationId === currentLocationId), [employees, currentLocationId]);
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
@@ -58,7 +60,8 @@ export default function Labour() {
 
   const laborPercent = weeklySales > 0 ? (weeklyLabor.totalCost / weeklySales) * 100 : 0;
   const laborDiff = laborPercent - targetPercent;
-  const isOverTarget = laborDiff > 2;
+  const isOverBudgetMax = laborPercent >= budgetMax;
+  const isOverTarget = isOverBudgetMax || laborDiff > 2;
   const isUnderTarget = laborDiff < -5;
   const isOnTarget = !isOverTarget && !isUnderTarget;
 
@@ -163,7 +166,7 @@ export default function Labour() {
             <Target size={22} />
           </div>
           <div className="stat-card__info">
-            <span className="stat-card__label">Labour % (Target: {targetPercent}%)</span>
+            <span className="stat-card__label">Labour % (Target: {targetPercent}% | Max: {budgetMax}%)</span>
             <span className="stat-card__value">{laborPercent.toFixed(1)}%</span>
           </div>
         </div>
@@ -183,7 +186,7 @@ export default function Labour() {
           <div>
             {isOverTarget ? (
               <>
-                <strong>Labour is {laborDiff.toFixed(1)}% above target.</strong> Your labour cost is ${weeklyLabor.totalCost.toLocaleString()} against ${weeklySales.toLocaleString()} in sales ({laborPercent.toFixed(1)}% vs {targetPercent}% target). Consider reducing scheduled hours or increasing sales.
+                <strong>Labour is {laborDiff.toFixed(1)}% above target{isOverBudgetMax ? ` and exceeds the ${budgetMax}% hard cap` : ''}.</strong> Your labour cost is ${weeklyLabor.totalCost.toLocaleString()} against ${weeklySales.toLocaleString()} in sales ({laborPercent.toFixed(1)}% vs {targetPercent}% target).{isOverBudgetMax ? ' Scheduling is blocked until labor is reduced below the max budget.' : ' Consider reducing scheduled hours or increasing sales.'}
               </>
             ) : (
               <>

@@ -7,8 +7,8 @@ export function generateSampleData() {
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
 
   const locations = [
-    { id: 'loc1', name: 'Downtown', address: '123 Main St', phone: '555-1000', targetLaborPercent: 30, lat: 43.6532, lng: -79.3832, geofenceRadius: 200 },
-    { id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, lat: 43.6745, lng: -79.3882, geofenceRadius: 150 },
+    { id: 'loc1', name: 'Downtown', address: '123 Main St', phone: '555-1000', targetLaborPercent: 30, laborBudgetWarning: 30, laborBudgetMax: 35, lat: 43.6532, lng: -79.3832, geofenceRadius: 200 },
+    { id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, laborBudgetWarning: 28, laborBudgetMax: 33, lat: 43.6745, lng: -79.3882, geofenceRadius: 150 },
   ];
 
   const employees = [

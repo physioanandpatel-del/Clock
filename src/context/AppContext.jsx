@@ -30,6 +30,8 @@ function loadState() {
         lat: l.lat || null,
         lng: l.lng || null,
         geofenceRadius: l.geofenceRadius || 200,
+        laborBudgetMax: l.laborBudgetMax ?? (l.targetLaborPercent ? l.targetLaborPercent + 5 : 35),
+        laborBudgetWarning: l.laborBudgetWarning ?? (l.targetLaborPercent || 30),
       }));
       return data;
     }

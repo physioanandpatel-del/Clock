@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   format,
@@ -11,6 +11,8 @@ import {
   setMinutes,
   addWeeks,
   subWeeks,
+  isWithinInterval,
+  differenceInHours,
 } from 'date-fns';
 import {
   ChevronLeft,
@@ -23,14 +25,22 @@ import {
   Send,
   GripVertical,
   Check,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { formatTime, getInitials } from '../utils/helpers';
 import './Schedule.css';
 
 export default function Schedule() {
   const { state, dispatch } = useApp();
-  const { employees, shifts, positions, currentLocationId } = state;
+  const { employees, shifts, positions, currentLocationId, locations, salesEntries } = state;
   const locationEmployees = employees.filter((e) => e.locationId === currentLocationId);
+  const currentLocation = locations.find((l) => l.id === currentLocationId);
+
+  // Location labor budget settings
+  const targetPercent = currentLocation?.targetLaborPercent || 30;
+  const budgetWarning = currentLocation?.laborBudgetWarning ?? targetPercent;
+  const budgetMax = currentLocation?.laborBudgetMax ?? targetPercent + 5;
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
@@ -53,7 +63,11 @@ export default function Schedule() {
   const [showCopyToast, setShowCopyToast] = useState(false);
 
   // Publish state
+  const [selectedShifts, setSelectedShifts] = useState(new Set());
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+
+  // Labor warning state
+  const [laborWarning, setLaborWarning] = useState(null);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -70,7 +84,7 @@ export default function Schedule() {
     }));
   }, [locationEmployees, shifts, weekDays]);
 
-  // Get all shifts for the current week
+  // Get all shifts for the current week at this location
   const weekShifts = useMemo(() => {
     const empIds = locationEmployees.map((e) => e.id);
     return shifts.filter((s) => {
@@ -80,14 +94,76 @@ export default function Schedule() {
     });
   }, [shifts, locationEmployees, weekDays]);
 
-  const draftCount = weekShifts.filter((s) => s.status !== 'published').length;
+  const draftShifts = weekShifts.filter((s) => s.status !== 'published');
+  const draftCount = draftShifts.length;
   const publishedCount = weekShifts.filter((s) => s.status === 'published').length;
+
+  // Weekly labor calculation
+  const weeklyLaborData = useMemo(() => {
+    let totalCost = 0;
+    let totalHours = 0;
+    weekShifts.forEach((s) => {
+      const emp = locationEmployees.find((e) => e.id === s.employeeId);
+      if (emp) {
+        const hrs = differenceInHours(parseISO(s.end), parseISO(s.start));
+        totalHours += hrs;
+        totalCost += hrs * emp.hourlyRate;
+      }
+    });
+    return { totalCost, totalHours };
+  }, [weekShifts, locationEmployees]);
+
+  // Weekly sales for labor % calculation
+  const weeklySales = useMemo(() => {
+    return (salesEntries || [])
+      .filter((s) => s.locationId === currentLocationId)
+      .filter((s) => {
+        const d = parseISO(s.date);
+        return isWithinInterval(d, { start: weekStart, end: weekEnd });
+      })
+      .reduce((sum, s) => sum + s.amount, 0);
+  }, [salesEntries, currentLocationId, weekStart, weekEnd]);
+
+  const currentLaborPercent = weeklySales > 0
+    ? (weeklyLaborData.totalCost / weeklySales) * 100
+    : 0;
+  const isOverBudgetMax = weeklySales > 0 && currentLaborPercent >= budgetMax;
+  const isOverBudgetWarning = weeklySales > 0 && currentLaborPercent >= budgetWarning && currentLaborPercent < budgetMax;
+
+  // Check if adding a shift would exceed the budget
+  function checkLaborBudget(empId, startTime, endTime) {
+    if (weeklySales <= 0) return { allowed: true };
+    const emp = locationEmployees.find((e) => e.id === empId);
+    if (!emp) return { allowed: true };
+    const newHours = differenceInHours(new Date(endTime), new Date(startTime));
+    const newCost = newHours * emp.hourlyRate;
+    const projectedCost = weeklyLaborData.totalCost + newCost;
+    const projectedPercent = (projectedCost / weeklySales) * 100;
+
+    if (projectedPercent >= budgetMax) {
+      return {
+        allowed: false,
+        projectedPercent,
+        message: `Adding this shift would push labor to ${projectedPercent.toFixed(1)}%, exceeding the ${budgetMax}% max budget for ${currentLocation?.name || 'this location'}.`,
+      };
+    }
+    if (projectedPercent >= budgetWarning) {
+      return {
+        allowed: true,
+        warning: true,
+        projectedPercent,
+        message: `This shift will push labor to ${projectedPercent.toFixed(1)}%, approaching the ${budgetMax}% max (warning at ${budgetWarning}%).`,
+      };
+    }
+    return { allowed: true };
+  }
 
   // --- Shift CRUD ---
 
   function openNewShift(employeeId, dayIndex) {
     const day = weekDays[dayIndex];
     setEditingShift(null);
+    setLaborWarning(null);
     setFormData({
       employeeId: employeeId || locationEmployees[0]?.id || '',
       date: format(day, 'yyyy-MM-dd'),
@@ -103,6 +179,7 @@ export default function Schedule() {
     const start = parseISO(shift.start);
     const end = parseISO(shift.end);
     setEditingShift(shift);
+    setLaborWarning(null);
     setFormData({
       employeeId: shift.employeeId,
       date: format(start, 'yyyy-MM-dd'),
@@ -122,6 +199,19 @@ export default function Schedule() {
     const start = setMinutes(setHours(date, startH), startM);
     const end = setMinutes(setHours(date, endH), endM);
 
+    // Check labor budget for new shifts (not edits)
+    if (!editingShift) {
+      const check = checkLaborBudget(formData.employeeId, start.toISOString(), end.toISOString());
+      if (!check.allowed) {
+        setLaborWarning(check);
+        return;
+      }
+      if (check.warning) {
+        setLaborWarning(check);
+        // Allow but show warning — user can still submit
+      }
+    }
+
     const payload = {
       employeeId: formData.employeeId,
       start: start.toISOString(),
@@ -136,6 +226,7 @@ export default function Schedule() {
       dispatch({ type: 'ADD_SHIFT', payload });
     }
     setShowModal(false);
+    setLaborWarning(null);
   }
 
   function handleDelete() {
@@ -151,7 +242,6 @@ export default function Schedule() {
     setDraggedShift(shift);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', shift.id);
-    // Make the drag image slightly transparent
     if (e.target) {
       e.target.style.opacity = '0.5';
     }
@@ -175,7 +265,6 @@ export default function Schedule() {
   }
 
   function handleDragLeave(e) {
-    // Only clear if leaving the cell entirely
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDragOverCell(null);
     }
@@ -184,14 +273,11 @@ export default function Schedule() {
   function handleDrop(e, targetEmployeeId, targetDayIdx) {
     e.preventDefault();
     setDragOverCell(null);
-
     if (!draggedShift) return;
 
     const targetDay = weekDays[targetDayIdx];
     const origStart = parseISO(draggedShift.start);
     const origEnd = parseISO(draggedShift.end);
-
-    // Reconstruct times on the new date
     const newStart = setMinutes(setHours(targetDay, origStart.getHours()), origStart.getMinutes());
     const newEnd = setMinutes(setHours(targetDay, origEnd.getHours()), origEnd.getMinutes());
 
@@ -204,7 +290,6 @@ export default function Schedule() {
         end: newEnd.toISOString(),
       },
     });
-
     setDraggedShift(null);
   }
 
@@ -219,13 +304,28 @@ export default function Schedule() {
 
   function handlePasteShift(employeeId, dayIdx) {
     if (!copiedShift) return;
-
     const targetDay = weekDays[dayIdx];
     const origStart = parseISO(copiedShift.start);
     const origEnd = parseISO(copiedShift.end);
-
     const newStart = setMinutes(setHours(targetDay, origStart.getHours()), origStart.getMinutes());
     const newEnd = setMinutes(setHours(targetDay, origEnd.getHours()), origEnd.getMinutes());
+
+    // Check budget before pasting
+    const check = checkLaborBudget(employeeId, newStart.toISOString(), newEnd.toISOString());
+    if (!check.allowed) {
+      setLaborWarning(check);
+      setShowModal(true);
+      setEditingShift(null);
+      setFormData({
+        employeeId,
+        date: format(targetDay, 'yyyy-MM-dd'),
+        startTime: format(origStart, 'HH:mm'),
+        endTime: format(origEnd, 'HH:mm'),
+        position: copiedShift.position,
+        notes: copiedShift.notes || '',
+      });
+      return;
+    }
 
     dispatch({
       type: 'ADD_SHIFT',
@@ -239,15 +339,35 @@ export default function Schedule() {
     });
   }
 
-  // --- Publish ---
+  // --- Selective Publish ---
 
-  function handlePublishWeek() {
-    const draftIds = weekShifts
-      .filter((s) => s.status !== 'published')
-      .map((s) => s.id);
-    if (draftIds.length > 0) {
-      dispatch({ type: 'PUBLISH_SHIFTS', payload: draftIds });
+  function toggleSelectShift(e, shiftId) {
+    e.stopPropagation();
+    setSelectedShifts((prev) => {
+      const next = new Set(prev);
+      if (next.has(shiftId)) {
+        next.delete(shiftId);
+      } else {
+        next.add(shiftId);
+      }
+      return next;
+    });
+  }
+
+  function selectAllDrafts() {
+    setSelectedShifts(new Set(draftShifts.map((s) => s.id)));
+  }
+
+  function clearSelection() {
+    setSelectedShifts(new Set());
+  }
+
+  function handlePublishSelected() {
+    const ids = Array.from(selectedShifts);
+    if (ids.length > 0) {
+      dispatch({ type: 'PUBLISH_SHIFTS', payload: ids });
     }
+    setSelectedShifts(new Set());
     setShowPublishConfirm(false);
   }
 
@@ -259,6 +379,8 @@ export default function Schedule() {
       dispatch({ type: 'UNPUBLISH_SHIFTS', payload: publishedIds });
     }
   }
+
+  const selectedCount = selectedShifts.size;
 
   return (
     <div className="schedule-page">
@@ -285,6 +407,7 @@ export default function Schedule() {
             className="btn btn--primary"
             onClick={() => {
               setEditingShift(null);
+              setLaborWarning(null);
               setFormData({
                 employeeId: locationEmployees[0]?.id || '',
                 date: format(new Date(), 'yyyy-MM-dd'),
@@ -301,6 +424,24 @@ export default function Schedule() {
         </div>
       </div>
 
+      {/* Labor Budget Bar */}
+      {weeklySales > 0 && (
+        <div className={`labor-budget-bar ${isOverBudgetMax ? 'labor-budget-bar--danger' : isOverBudgetWarning ? 'labor-budget-bar--warning' : 'labor-budget-bar--ok'}`}>
+          <div className="labor-budget-bar__left">
+            {isOverBudgetMax ? <XCircle size={16} /> : isOverBudgetWarning ? <AlertTriangle size={16} /> : <Check size={16} />}
+            <span>
+              Labor: <strong>{currentLaborPercent.toFixed(1)}%</strong>
+              {' '}(${weeklyLaborData.totalCost.toLocaleString()} / ${weeklySales.toLocaleString()} sales)
+            </span>
+          </div>
+          <div className="labor-budget-bar__right">
+            <span className="labor-budget-bar__range">
+              Target: {targetPercent}% | Warning: {budgetWarning}% | Max: {budgetMax}%
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Publish Bar */}
       <div className="publish-bar">
         <div className="publish-bar__info">
@@ -315,6 +456,11 @@ export default function Schedule() {
                 <Check size={12} /> {publishedCount} published
               </span>
             )}
+            {selectedCount > 0 && (
+              <span className="publish-bar__badge publish-bar__badge--selected">
+                {selectedCount} selected
+              </span>
+            )}
           </div>
           {copiedShift && (
             <span className="publish-bar__copied">
@@ -323,17 +469,35 @@ export default function Schedule() {
           )}
         </div>
         <div className="publish-bar__actions">
-          {publishedCount > 0 && (
-            <button className="btn btn--secondary btn--sm" onClick={handleUnpublishWeek}>
-              Unpublish
+          {draftCount > 0 && selectedCount === 0 && (
+            <button className="btn btn--secondary btn--sm" onClick={selectAllDrafts}>
+              Select All Drafts
             </button>
           )}
-          {draftCount > 0 && (
+          {selectedCount > 0 && (
+            <button className="btn btn--secondary btn--sm" onClick={clearSelection}>
+              Clear Selection
+            </button>
+          )}
+          {publishedCount > 0 && (
+            <button className="btn btn--secondary btn--sm" onClick={handleUnpublishWeek}>
+              Unpublish All
+            </button>
+          )}
+          {selectedCount > 0 && (
             <button
               className="btn btn--publish btn--sm"
               onClick={() => setShowPublishConfirm(true)}
             >
-              <Send size={14} /> Publish {draftCount} Shift{draftCount !== 1 ? 's' : ''}
+              <Send size={14} /> Publish {selectedCount} Shift{selectedCount !== 1 ? 's' : ''}
+            </button>
+          )}
+          {draftCount > 0 && selectedCount === 0 && (
+            <button
+              className="btn btn--publish btn--sm"
+              onClick={() => { selectAllDrafts(); setShowPublishConfirm(true); }}
+            >
+              <Send size={14} /> Publish All
             </button>
           )}
         </div>
@@ -384,40 +548,59 @@ export default function Schedule() {
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, employee.id, dayIdx)}
                     >
-                      {dayShifts.map((s) => (
-                        <div
-                          key={s.id}
-                          className={`schedule-shift ${s.status === 'published' ? 'schedule-shift--published' : 'schedule-shift--draft'} ${draggedShift?.id === s.id ? 'schedule-shift--dragging' : ''}`}
-                          style={{ borderLeftColor: employee.color }}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, s)}
-                          onDragEnd={handleDragEnd}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditShift(s);
-                          }}
-                        >
-                          <div className="schedule-shift__header">
-                            <GripVertical size={12} className="schedule-shift__grip" />
-                            <button
-                              className="schedule-shift__copy-btn"
-                              title="Copy shift"
-                              onClick={(e) => handleCopyShift(e, s)}
-                            >
-                              <Copy size={11} />
-                            </button>
-                          </div>
-                          <span className="schedule-shift__time">
-                            {formatTime(s.start)} - {formatTime(s.end)}
-                          </span>
-                          <span className="schedule-shift__pos">{s.position}</span>
-                          {s.status === 'published' && (
-                            <span className="schedule-shift__status">
-                              <Check size={10} /> Published
+                      {dayShifts.map((s) => {
+                        const isDraft = s.status !== 'published';
+                        const isSelected = selectedShifts.has(s.id);
+                        return (
+                          <div
+                            key={s.id}
+                            className={`schedule-shift ${s.status === 'published' ? 'schedule-shift--published' : 'schedule-shift--draft'} ${draggedShift?.id === s.id ? 'schedule-shift--dragging' : ''} ${isSelected ? 'schedule-shift--selected' : ''}`}
+                            style={{ borderLeftColor: employee.color }}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, s)}
+                            onDragEnd={handleDragEnd}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditShift(s);
+                            }}
+                          >
+                            <div className="schedule-shift__header">
+                              <GripVertical size={12} className="schedule-shift__grip" />
+                              <div className="schedule-shift__actions">
+                                <button
+                                  className="schedule-shift__copy-btn"
+                                  title="Copy shift"
+                                  onClick={(e) => handleCopyShift(e, s)}
+                                >
+                                  <Copy size={11} />
+                                </button>
+                                {isDraft && (
+                                  <label
+                                    className="schedule-shift__checkbox"
+                                    title={isSelected ? 'Deselect for publishing' : 'Select for publishing'}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={(e) => toggleSelectShift(e, s.id)}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                            <span className="schedule-shift__time">
+                              {formatTime(s.start)} - {formatTime(s.end)}
                             </span>
-                          )}
-                        </div>
-                      ))}
+                            <span className="schedule-shift__pos">{s.position}</span>
+                            {s.status === 'published' && (
+                              <span className="schedule-shift__status">
+                                <Check size={10} /> Published
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                       {dayShifts.length === 0 && (
                         <div className="schedule-grid__empty">
                           {copiedShift ? (
@@ -455,7 +638,7 @@ export default function Schedule() {
             </div>
             <div className="modal__body">
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-                You are about to publish <strong>{draftCount}</strong> draft shift{draftCount !== 1 ? 's' : ''} for the week of{' '}
+                You are about to publish <strong>{selectedCount || draftCount}</strong> shift{(selectedCount || draftCount) !== 1 ? 's' : ''} for the week of{' '}
                 <strong>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}</strong>.
                 Published shifts will be visible to all employees.
               </p>
@@ -465,8 +648,8 @@ export default function Schedule() {
                 <button className="btn btn--secondary" onClick={() => setShowPublishConfirm(false)}>
                   Cancel
                 </button>
-                <button className="btn btn--publish" onClick={handlePublishWeek}>
-                  <Send size={14} /> Publish All
+                <button className="btn btn--publish" onClick={handlePublishSelected}>
+                  <Send size={14} /> Publish {selectedCount || draftCount} Shift{(selectedCount || draftCount) !== 1 ? 's' : ''}
                 </button>
               </div>
             </div>
@@ -476,18 +659,32 @@ export default function Schedule() {
 
       {/* Shift Form Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowModal(false); setLaborWarning(null); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">
                 {editingShift ? 'Edit Shift' : 'New Shift'}
               </h2>
-              <button className="btn btn--icon" onClick={() => setShowModal(false)}>
+              <button className="btn btn--icon" onClick={() => { setShowModal(false); setLaborWarning(null); }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal__body">
+                {/* Labor budget warning/error in modal */}
+                {laborWarning && !laborWarning.allowed && (
+                  <div className="labor-modal-alert labor-modal-alert--danger">
+                    <XCircle size={16} />
+                    <span>{laborWarning.message}</span>
+                  </div>
+                )}
+                {laborWarning && laborWarning.allowed && laborWarning.warning && (
+                  <div className="labor-modal-alert labor-modal-alert--warning">
+                    <AlertTriangle size={16} />
+                    <span>{laborWarning.message}</span>
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label className="form-label">Employee</label>
                   <select
@@ -575,10 +772,14 @@ export default function Schedule() {
                   </button>
                 )}
                 <div className="modal__footer-right">
-                  <button type="button" className="btn btn--secondary" onClick={() => setShowModal(false)}>
+                  <button type="button" className="btn btn--secondary" onClick={() => { setShowModal(false); setLaborWarning(null); }}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn--primary">
+                  <button
+                    type="submit"
+                    className="btn btn--primary"
+                    disabled={laborWarning && !laborWarning.allowed}
+                  >
                     {editingShift ? 'Save Changes' : 'Create Shift'}
                   </button>
                 </div>

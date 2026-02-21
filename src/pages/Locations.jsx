@@ -9,23 +9,23 @@ export default function Locations() {
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [formData, setFormData] = useState({ name: '', address: '', phone: '', targetLaborPercent: '30', lat: '', lng: '', geofenceRadius: '200' });
+  const [formData, setFormData] = useState({ name: '', address: '', phone: '', targetLaborPercent: '30', laborBudgetWarning: '30', laborBudgetMax: '35', lat: '', lng: '', geofenceRadius: '200' });
 
   function openNew() {
     setEditing(null);
-    setFormData({ name: '', address: '', phone: '', targetLaborPercent: '30', lat: '', lng: '', geofenceRadius: '200' });
+    setFormData({ name: '', address: '', phone: '', targetLaborPercent: '30', laborBudgetWarning: '30', laborBudgetMax: '35', lat: '', lng: '', geofenceRadius: '200' });
     setShowModal(true);
   }
 
   function openEdit(loc) {
     setEditing(loc);
-    setFormData({ name: loc.name, address: loc.address, phone: loc.phone, targetLaborPercent: String(loc.targetLaborPercent), lat: loc.lat ? String(loc.lat) : '', lng: loc.lng ? String(loc.lng) : '', geofenceRadius: String(loc.geofenceRadius || 200) });
+    setFormData({ name: loc.name, address: loc.address, phone: loc.phone, targetLaborPercent: String(loc.targetLaborPercent), laborBudgetWarning: String(loc.laborBudgetWarning ?? loc.targetLaborPercent), laborBudgetMax: String(loc.laborBudgetMax ?? (loc.targetLaborPercent + 5)), lat: loc.lat ? String(loc.lat) : '', lng: loc.lng ? String(loc.lng) : '', geofenceRadius: String(loc.geofenceRadius || 200) });
     setShowModal(true);
   }
 
   function handleSubmit(e) {
     e.preventDefault();
-    const payload = { ...formData, targetLaborPercent: Number(formData.targetLaborPercent) || 30, lat: formData.lat ? Number(formData.lat) : null, lng: formData.lng ? Number(formData.lng) : null, geofenceRadius: Number(formData.geofenceRadius) || 200 };
+    const payload = { ...formData, targetLaborPercent: Number(formData.targetLaborPercent) || 30, laborBudgetWarning: Number(formData.laborBudgetWarning) || Number(formData.targetLaborPercent) || 30, laborBudgetMax: Number(formData.laborBudgetMax) || (Number(formData.targetLaborPercent) || 30) + 5, lat: formData.lat ? Number(formData.lat) : null, lng: formData.lng ? Number(formData.lng) : null, geofenceRadius: Number(formData.geofenceRadius) || 200 };
     if (editing) {
       dispatch({ type: 'UPDATE_LOCATION', payload: { ...payload, id: editing.id } });
     } else {
@@ -79,9 +79,14 @@ export default function Locations() {
                 <p className="location-card__phone">{loc.phone}</p>
                 <div className="location-card__stats">
                   <span>{empCount} employees</span>
-                  <span>Target: {loc.targetLaborPercent}% labor</span>
-                  {loc.lat && loc.lng && <span>Geofence: {loc.geofenceRadius}m</span>}
+                  <span>Target: {loc.targetLaborPercent}%</span>
+                  <span>Max: {loc.laborBudgetMax ?? loc.targetLaborPercent + 5}%</span>
                 </div>
+                {loc.lat && loc.lng && (
+                  <div className="location-card__stats" style={{ marginTop: 4 }}>
+                    <span>Geofence: {loc.geofenceRadius}m</span>
+                  </div>
+                )}
                 {!isActive && (
                   <button className="btn btn--secondary location-card__switch" onClick={() => switchLocation(loc.id)}>
                     <CheckCircle size={14} /> Switch to this location
@@ -118,6 +123,20 @@ export default function Locations() {
                   <div className="form-group">
                     <label className="form-label">Target Labor %</label>
                     <input type="number" className="form-input" value={formData.targetLaborPercent} onChange={(e) => setFormData({ ...formData, targetLaborPercent: e.target.value })} placeholder="30" min="1" max="100" required />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: 8 }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Labor Budget Controls</label>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Set warning and max thresholds. Scheduling is blocked when labor exceeds the max %.</p>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Warning Threshold %</label>
+                    <input type="number" className="form-input" value={formData.laborBudgetWarning} onChange={(e) => setFormData({ ...formData, laborBudgetWarning: e.target.value })} placeholder="30" min="1" max="100" required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Max Labor % (Hard Cap)</label>
+                    <input type="number" className="form-input" value={formData.laborBudgetMax} onChange={(e) => setFormData({ ...formData, laborBudgetMax: e.target.value })} placeholder="35" min="1" max="100" required />
                   </div>
                 </div>
                 <div className="form-group" style={{ marginTop: 8 }}>
