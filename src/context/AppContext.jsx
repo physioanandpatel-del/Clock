@@ -5,7 +5,7 @@ import { generateId } from '../utils/helpers';
 const AppContext = createContext(null);
 
 const STORAGE_KEY = 'clock-app-data';
-const DATA_VERSION = 6; // Increment when sample data changes significantly
+const DATA_VERSION = 7; // Increment when sample data changes significantly
 
 // Access level hierarchy (higher index = more access)
 export const ACCESS_LEVELS = ['employee', 'manager', 'location_admin', 'master_admin'];
@@ -119,7 +119,11 @@ function loadState() {
         geofenceRadius: l.geofenceRadius || 200,
         laborBudgetMax: l.laborBudgetMax ?? (l.targetLaborPercent ? l.targetLaborPercent + 5 : 35),
         laborBudgetWarning: l.laborBudgetWarning ?? (l.targetLaborPercent || 30),
+        clockRules: l.clockRules || { earlyClockInBuffer: 15, lateClockOutBuffer: 15, restrictEarlyClockIn: false, autoClockOut: false, autoClockOutBuffer: 30 },
+        requiredPositions: l.requiredPositions || [],
       }));
+      // Migrate timesheets: add managerNotes field
+      data.timesheets = (data.timesheets || []).map((t) => ({ ...t, managerNotes: t.managerNotes || '' }));
       return { ...data, _version: DATA_VERSION };
     }
   } catch (e) {
@@ -489,6 +493,8 @@ function reducer(state, action) {
       return { ...state, timesheets: (state.timesheets || []).map((t) => t.id === action.payload.id ? { ...t, status: 'approved', approvedBy: action.payload.approvedBy, approvedDate: new Date().toISOString() } : t) };
     case 'REJECT_TIMESHEET':
       return { ...state, timesheets: (state.timesheets || []).map((t) => t.id === action.payload.id ? { ...t, status: 'rejected', notes: action.payload.notes || '' } : t) };
+    case 'UPDATE_TIMESHEET_NOTES':
+      return { ...state, timesheets: (state.timesheets || []).map((t) => t.id === action.payload.id ? { ...t, managerNotes: action.payload.managerNotes } : t) };
 
     // Open Shift Bids
     case 'ADD_OPEN_SHIFT_BID': {

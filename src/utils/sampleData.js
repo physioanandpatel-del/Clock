@@ -7,8 +7,32 @@ export function generateSampleData() {
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
 
   const locations = [
-    { id: 'loc1', name: 'Downtown', address: '123 Main St', phone: '555-1000', targetLaborPercent: 30, laborBudgetWarning: 30, laborBudgetMax: 35, lat: 43.6532, lng: -79.3832, geofenceRadius: 200 },
-    { id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, laborBudgetWarning: 28, laborBudgetMax: 33, lat: 43.6745, lng: -79.3882, geofenceRadius: 150 },
+    {
+      id: 'loc1', name: 'Downtown', address: '123 Main St', phone: '555-1000', targetLaborPercent: 30, laborBudgetWarning: 30, laborBudgetMax: 35, lat: 43.6532, lng: -79.3832, geofenceRadius: 200,
+      clockRules: { earlyClockInBuffer: 15, lateClockOutBuffer: 15, restrictEarlyClockIn: false, autoClockOut: true, autoClockOutBuffer: 30 },
+      requiredPositions: [
+        { id: 'rp1', dayOfWeek: 1, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp2', dayOfWeek: 1, position: 'Server', startTime: '11:00', endTime: '19:00' },
+        { id: 'rp3', dayOfWeek: 1, position: 'Cook', startTime: '07:00', endTime: '15:00' },
+        { id: 'rp4', dayOfWeek: 2, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp5', dayOfWeek: 2, position: 'Server', startTime: '11:00', endTime: '19:00' },
+        { id: 'rp6', dayOfWeek: 2, position: 'Cook', startTime: '07:00', endTime: '15:00' },
+        { id: 'rp7', dayOfWeek: 3, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp8', dayOfWeek: 3, position: 'Server', startTime: '11:00', endTime: '19:00' },
+        { id: 'rp9', dayOfWeek: 4, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp10', dayOfWeek: 4, position: 'Server', startTime: '11:00', endTime: '23:00' },
+        { id: 'rp11', dayOfWeek: 4, position: 'Bartender', startTime: '15:00', endTime: '23:00' },
+        { id: 'rp12', dayOfWeek: 5, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp13', dayOfWeek: 5, position: 'Server', startTime: '11:00', endTime: '23:00' },
+        { id: 'rp14', dayOfWeek: 5, position: 'Bartender', startTime: '15:00', endTime: '01:00' },
+        { id: 'rp15', dayOfWeek: 5, position: 'Cook', startTime: '07:00', endTime: '23:00' },
+      ],
+    },
+    {
+      id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, laborBudgetWarning: 28, laborBudgetMax: 33, lat: 43.6745, lng: -79.3882, geofenceRadius: 150,
+      clockRules: { earlyClockInBuffer: 10, lateClockOutBuffer: 10, restrictEarlyClockIn: false, autoClockOut: false, autoClockOutBuffer: 30 },
+      requiredPositions: [],
+    },
   ];
 
   const accessLevels = ['master_admin', 'location_admin', 'manager', 'employee'];

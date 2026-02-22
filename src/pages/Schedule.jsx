@@ -13,6 +13,7 @@ import {
   subWeeks,
   isWithinInterval,
   differenceInHours,
+  getDay,
 } from 'date-fns';
 import {
   ChevronLeft,
@@ -30,6 +31,11 @@ import {
   Repeat,
   CheckCircle,
   Clock,
+  Eye,
+  CopyPlus,
+  CalendarRange,
+  ShieldAlert,
+  ListChecks,
 } from 'lucide-react';
 import { formatTime, getInitials, getEffectiveRate } from '../utils/helpers';
 import './Schedule.css';
@@ -69,7 +75,9 @@ export default function Schedule() {
 
   // Copy/paste state
   const [copiedShift, setCopiedShift] = useState(null);
+  const [copyWithTasks, setCopyWithTasks] = useState(true);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [showCopyOptions, setShowCopyOptions] = useState(null); // shift object
 
   // Publish state
   const [selectedShifts, setSelectedShifts] = useState(new Set());
@@ -83,6 +91,16 @@ export default function Schedule() {
   const [showSwapRequestModal, setShowSwapRequestModal] = useState(false);
   const [swapShiftId, setSwapShiftId] = useState(null);
   const [swapReason, setSwapReason] = useState('');
+
+  // Coverage view state
+  const [showCoverageView, setShowCoverageView] = useState(false);
+  const [dismissedCoverageWarnings, setDismissedCoverageWarnings] = useState(new Set());
+
+  // Week duplication state
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [copiedWeekShifts, setCopiedWeekShifts] = useState(null);
+  const [copiedWeekLabel, setCopiedWeekLabel] = useState('');
+  const [duplicateWithTasks, setDuplicateWithTasks] = useState(true);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -161,6 +179,40 @@ export default function Schedule() {
     : 0;
   const isOverBudgetMax = weeklySales > 0 && currentLaborPercent >= budgetMax;
   const isOverBudgetWarning = weeklySales > 0 && currentLaborPercent >= budgetWarning && currentLaborPercent < budgetMax;
+
+  // ===== COVERAGE MONITORING =====
+  const requiredPositions = currentLocation?.requiredPositions || [];
+
+  const coverageData = useMemo(() => {
+    if (requiredPositions.length === 0) return [];
+    return weekDays.map((day, dayIdx) => {
+      // date-fns getDay: 0=Sun, 1=Mon... but requiredPositions uses 1=Mon...7=Sun
+      const jsDay = getDay(day);
+      const rpDayOfWeek = jsDay === 0 ? 7 : jsDay;
+      const dayReqs = requiredPositions.filter((rp) => rp.dayOfWeek === rpDayOfWeek);
+      const dayShifts = weekShifts.filter((s) => isSameDay(parseISO(s.start), day));
+      const publishedDayShifts = dayShifts.filter((s) => s.status === 'published');
+
+      return dayReqs.map((rp) => {
+        const coveringShifts = dayShifts.filter((s) => s.position === rp.position);
+        const publishedCovering = publishedDayShifts.filter((s) => s.position === rp.position);
+        const isCovered = coveringShifts.length > 0;
+        const isPublished = publishedCovering.length > 0;
+        return {
+          ...rp,
+          day,
+          dayIdx,
+          isCovered,
+          isPublished,
+          coveringShifts,
+          key: `${rp.id}-${dayIdx}`,
+        };
+      });
+    }).flat();
+  }, [requiredPositions, weekDays, weekShifts]);
+
+  const uncoveredPositions = coverageData.filter((c) => !c.isCovered && !dismissedCoverageWarnings.has(c.key));
+  const unpublishedCovered = coverageData.filter((c) => c.isCovered && !c.isPublished);
 
   // Check if adding a shift would exceed the budget
   function checkLaborBudget(empId, startTime, endTime) {
@@ -329,11 +381,17 @@ export default function Schedule() {
     setDraggedShift(null);
   }
 
-  // --- Copy / Paste ---
+  // --- Copy / Paste (with task copy option) ---
 
   function handleCopyShift(e, shift) {
     e.stopPropagation();
-    setCopiedShift(shift);
+    setShowCopyOptions(shift);
+  }
+
+  function confirmCopyShift(withTasks) {
+    setCopiedShift(showCopyOptions);
+    setCopyWithTasks(withTasks);
+    setShowCopyOptions(null);
     setShowCopyToast(true);
     setTimeout(() => setShowCopyToast(false), 2000);
   }
@@ -359,6 +417,7 @@ export default function Schedule() {
         endTime: format(origEnd, 'HH:mm'),
         position: copiedShift.position,
         notes: copiedShift.notes || '',
+        taskTemplateIds: copyWithTasks ? (copiedShift.taskTemplateIds || []) : [],
       });
       return;
     }
@@ -371,6 +430,7 @@ export default function Schedule() {
         end: newEnd.toISOString(),
         position: copiedShift.position,
         notes: copiedShift.notes || '',
+        taskTemplateIds: copyWithTasks ? (copiedShift.taskTemplateIds || []) : [],
       },
     });
   }
@@ -417,6 +477,40 @@ export default function Schedule() {
   }
 
   const selectedCount = selectedShifts.size;
+
+  // --- Week Duplication ---
+
+  function handleCopyWeek() {
+    setCopiedWeekShifts(weekShifts.map((s) => ({ ...s })));
+    setCopiedWeekLabel(`${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`);
+  }
+
+  function handlePasteWeek() {
+    if (!copiedWeekShifts || copiedWeekShifts.length === 0) return;
+
+    // Calculate the offset between the copied week and the current week
+    const sourceWeekStart = startOfWeek(parseISO(copiedWeekShifts[0].start), { weekStartsOn: 1 });
+    const newShifts = copiedWeekShifts.map((s) => {
+      const origStart = parseISO(s.start);
+      const origEnd = parseISO(s.end);
+      // Which day of the week is this shift on? (0-6 from week start)
+      const dayOffset = Math.round((origStart - sourceWeekStart) / (1000 * 60 * 60 * 24));
+      const targetDay = addDays(weekStart, dayOffset);
+      const newStart = setMinutes(setHours(targetDay, origStart.getHours()), origStart.getMinutes());
+      const newEnd = setMinutes(setHours(targetDay, origEnd.getHours()), origEnd.getMinutes());
+      return {
+        employeeId: s.employeeId,
+        start: newStart.toISOString(),
+        end: newEnd.toISOString(),
+        position: s.position,
+        notes: s.notes || '',
+        taskTemplateIds: duplicateWithTasks ? (s.taskTemplateIds || []) : [],
+      };
+    });
+
+    dispatch({ type: 'BULK_ADD_SHIFTS', payload: newShifts });
+    setShowDuplicateModal(false);
+  }
 
   // Swap Board data
   const activeSwaps = useMemo(() => {
@@ -698,6 +792,17 @@ export default function Schedule() {
           <button className={`btn btn--secondary ${swapCount > 0 ? 'btn--swap-alert' : ''}`} onClick={() => setShowSwapBoard(true)}>
             <Repeat size={16} /> Swap Board {swapCount > 0 && <span className="swap-count-badge">{swapCount}</span>}
           </button>
+          {requiredPositions.length > 0 && (
+            <button
+              className={`btn btn--secondary ${uncoveredPositions.length > 0 ? 'btn--coverage-alert' : ''}`}
+              onClick={() => setShowCoverageView(true)}
+            >
+              <Eye size={16} /> Coverage {uncoveredPositions.length > 0 && <span className="swap-count-badge">{uncoveredPositions.length}</span>}
+            </button>
+          )}
+          <button className="btn btn--secondary" onClick={() => setShowDuplicateModal(true)}>
+            <CalendarRange size={16} /> Week
+          </button>
           <button
             className="btn btn--primary"
             onClick={() => {
@@ -719,6 +824,19 @@ export default function Schedule() {
           </button>
         </div>
       </div>
+
+      {/* Coverage Warning Banner */}
+      {uncoveredPositions.length > 0 && !showCoverageView && (
+        <div className="coverage-warning-banner">
+          <ShieldAlert size={16} />
+          <span>
+            <strong>{uncoveredPositions.length}</strong> required position{uncoveredPositions.length !== 1 ? 's' : ''} not yet scheduled this week.
+          </span>
+          <button className="btn btn--secondary btn--sm" onClick={() => setShowCoverageView(true)}>
+            View Details
+          </button>
+        </div>
+      )}
 
       {/* Labor Budget Bar */}
       {weeklySales > 0 && (
@@ -766,7 +884,12 @@ export default function Schedule() {
           </div>
           {copiedShift && (
             <span className="publish-bar__copied">
-              <Clipboard size={12} /> Shift copied — click empty cell to paste
+              <Clipboard size={12} /> Shift copied{copyWithTasks ? ' (with tasks)' : ' (no tasks)'} — click empty cell to paste
+            </span>
+          )}
+          {copiedWeekShifts && (
+            <span className="publish-bar__copied">
+              <CalendarRange size={12} /> Week copied ({copiedWeekLabel}) — use Week button to paste
             </span>
           )}
         </div>
@@ -945,7 +1068,40 @@ export default function Schedule() {
       {/* Copy Toast */}
       {showCopyToast && (
         <div className="copy-toast">
-          <Check size={14} /> Shift copied! Click an empty cell to paste.
+          <Check size={14} /> Shift copied{copyWithTasks ? ' with tasks' : ' without tasks'}! Click an empty cell to paste.
+        </div>
+      )}
+
+      {/* Copy Options Popup */}
+      {showCopyOptions && (
+        <div className="modal-overlay" onClick={() => setShowCopyOptions(null)}>
+          <div className="modal modal--sm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title"><Copy size={16} /> Copy Shift</h2>
+              <button className="btn btn--icon" onClick={() => setShowCopyOptions(null)}><X size={18} /></button>
+            </div>
+            <div className="modal__body">
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                This shift has {(showCopyOptions.taskTemplateIds || []).length > 0 ? `${showCopyOptions.taskTemplateIds.length} task template(s)` : 'no tasks'} assigned. How would you like to copy?
+              </p>
+              <div className="copy-options">
+                <button className="copy-option" onClick={() => confirmCopyShift(true)}>
+                  <ListChecks size={18} />
+                  <div>
+                    <strong>Copy with tasks</strong>
+                    <span>Include all assigned task templates</span>
+                  </div>
+                </button>
+                <button className="copy-option" onClick={() => confirmCopyShift(false)}>
+                  <Copy size={18} />
+                  <div>
+                    <strong>Copy without tasks</strong>
+                    <span>Only copy schedule and position</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -965,6 +1121,12 @@ export default function Schedule() {
                 <strong>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}</strong>.
                 Published shifts will be visible to all employees.
               </p>
+              {uncoveredPositions.length > 0 && (
+                <div className="labor-modal-alert labor-modal-alert--warning" style={{ marginTop: 12 }}>
+                  <AlertTriangle size={16} />
+                  <span>{uncoveredPositions.length} required position{uncoveredPositions.length !== 1 ? 's are' : ' is'} still not scheduled. You can still publish.</span>
+                </div>
+              )}
             </div>
             <div className="modal__footer">
               <div className="modal__footer-right">
@@ -974,6 +1136,130 @@ export default function Schedule() {
                 <button className="btn btn--publish" onClick={handlePublishSelected}>
                   <Send size={14} /> Publish {selectedCount || draftCount} Shift{(selectedCount || draftCount) !== 1 ? 's' : ''}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coverage View Modal */}
+      {showCoverageView && (
+        <div className="modal-overlay" onClick={() => setShowCoverageView(false)}>
+          <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title"><Eye size={18} /> Schedule Coverage</h2>
+              <button className="btn btn--icon" onClick={() => setShowCoverageView(false)}><X size={18} /></button>
+            </div>
+            <div className="modal__body" style={{ gap: 8 }}>
+              <p className="form-hint" style={{ margin: 0 }}>
+                Required positions for <strong>{currentLocation?.name}</strong>. Unscheduled positions are highlighted. You can dismiss individual warnings.
+              </p>
+              {coverageData.length === 0 ? (
+                <div className="empty-state" style={{ padding: '30px 20px' }}>
+                  <ShieldAlert size={32} className="empty-state__icon" />
+                  <p>No required positions configured for this location.</p>
+                </div>
+              ) : (
+                <div className="coverage-grid">
+                  {weekDays.map((day, dayIdx) => {
+                    const dayCoverage = coverageData.filter((c) => c.dayIdx === dayIdx);
+                    if (dayCoverage.length === 0) return null;
+                    return (
+                      <div key={dayIdx} className="coverage-day">
+                        <div className="coverage-day__header">
+                          <strong>{format(day, 'EEE, MMM d')}</strong>
+                        </div>
+                        {dayCoverage.map((c) => {
+                          const isDismissed = dismissedCoverageWarnings.has(c.key);
+                          return (
+                            <div key={c.key} className={`coverage-item ${c.isCovered ? (c.isPublished ? 'coverage-item--ok' : 'coverage-item--draft') : isDismissed ? 'coverage-item--dismissed' : 'coverage-item--missing'}`}>
+                              <div className="coverage-item__info">
+                                <span className="coverage-item__position">{c.position}</span>
+                                <span className="coverage-item__time">{c.startTime} - {c.endTime}</span>
+                              </div>
+                              <div className="coverage-item__status">
+                                {c.isCovered && c.isPublished && <span className="coverage-badge coverage-badge--ok"><CheckCircle size={12} /> Published</span>}
+                                {c.isCovered && !c.isPublished && <span className="coverage-badge coverage-badge--draft"><AlertTriangle size={12} /> Draft only</span>}
+                                {!c.isCovered && !isDismissed && (
+                                  <>
+                                    <span className="coverage-badge coverage-badge--missing"><XCircle size={12} /> Not scheduled</span>
+                                    <button className="btn btn--icon btn--sm" onClick={() => setDismissedCoverageWarnings((prev) => new Set([...prev, c.key]))} title="Dismiss warning">
+                                      <X size={12} />
+                                    </button>
+                                  </>
+                                )}
+                                {!c.isCovered && isDismissed && <span className="coverage-badge coverage-badge--dismissed">Dismissed</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="modal__footer">
+              <div className="modal__footer-right">
+                <button className="btn btn--secondary" onClick={() => setShowCoverageView(false)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Week Duplication Modal */}
+      {showDuplicateModal && (
+        <div className="modal-overlay" onClick={() => setShowDuplicateModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title"><CalendarRange size={18} /> Week Schedule Tools</h2>
+              <button className="btn btn--icon" onClick={() => setShowDuplicateModal(false)}><X size={18} /></button>
+            </div>
+            <div className="modal__body">
+              <p className="form-hint" style={{ margin: 0 }}>
+                Copy the current week's schedule and paste it into another week.
+              </p>
+
+              <div className="week-dup-section">
+                <h4 className="week-dup-label">Step 1: Copy this week</h4>
+                <p className="form-hint">Current week: <strong>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}</strong> ({weekShifts.length} shifts)</p>
+                <button
+                  className="btn btn--secondary"
+                  onClick={handleCopyWeek}
+                  disabled={weekShifts.length === 0}
+                >
+                  <CopyPlus size={16} /> Copy Week ({weekShifts.length} shifts)
+                </button>
+                {copiedWeekShifts && (
+                  <div className="week-dup-copied">
+                    <Check size={14} /> Week copied: {copiedWeekLabel} ({copiedWeekShifts.length} shifts)
+                  </div>
+                )}
+              </div>
+
+              {copiedWeekShifts && (
+                <div className="week-dup-section">
+                  <h4 className="week-dup-label">Step 2: Navigate to target week, then paste</h4>
+                  <p className="form-hint">
+                    Navigate to the week you want to paste into using the week navigation arrows, then click Paste.
+                    Target: <strong>{format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}</strong>
+                  </p>
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" checked={duplicateWithTasks} onChange={(e) => setDuplicateWithTasks(e.target.checked)} />
+                      Include task templates
+                    </label>
+                  </div>
+                  <button className="btn btn--primary" onClick={handlePasteWeek}>
+                    <Clipboard size={16} /> Paste {copiedWeekShifts.length} shifts into this week
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="modal__footer">
+              <div className="modal__footer-right">
+                <button className="btn btn--secondary" onClick={() => setShowDuplicateModal(false)}>Close</button>
               </div>
             </div>
           </div>
