@@ -485,5 +485,60 @@ export function generateSampleData() {
     { id: 'sr4', surveyId: 'sv1', employeeId: '10', sentDate: '2024-07-01', completedDate: '2024-07-02', status: 'completed', answers: [{ questionId: 'q1', value: 5 }, { questionId: 'q2', value: 5 }, { questionId: 'q3', value: 4 }, { questionId: 'q4', value: 'Training kitchen was great, very supportive team' }] },
   ];
 
-  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses };
+  // Customers
+  const customers = [
+    { id: 'cust1', name: 'Maple Leaf Catering Co.', email: 'info@mapleleafcatering.ca', phone: '416-555-3001', company: 'Maple Leaf Catering', address: '55 Front St W', city: 'Toronto', province: 'ON', postalCode: 'M5J 1E6', status: 'active', plan: 'professional', notes: 'Long-term client. Weekly catering orders for office lunches.', createdDate: '2024-01-15' },
+    { id: 'cust2', name: 'Riverdale Events Inc.', email: 'events@riverdale.ca', phone: '416-555-3002', company: 'Riverdale Events', address: '100 Broadview Ave', city: 'Toronto', province: 'ON', postalCode: 'M4M 3H3', status: 'active', plan: 'enterprise', notes: 'Handles large-scale events. VIP account. Net-30 payment terms.', createdDate: '2023-11-01' },
+    { id: 'cust3', name: 'Parkdale Bistro Group', email: 'orders@parkdalebistro.ca', phone: '416-555-3003', company: 'Parkdale Bistro', address: '1400 Queen St W', city: 'Toronto', province: 'ON', postalCode: 'M6K 1L4', status: 'active', plan: 'basic', notes: 'Small bistro group. Monthly orders.', createdDate: '2024-06-10' },
+    { id: 'cust4', name: 'Northern Hospitality Ltd.', email: 'ap@northernhospitality.ca', phone: '416-555-3004', company: 'Northern Hospitality', address: '200 Bay St', city: 'Toronto', province: 'ON', postalCode: 'M5J 2J5', status: 'active', plan: 'professional', notes: 'Hotel chain. Multiple locations.', createdDate: '2024-03-20' },
+    { id: 'cust5', name: 'West End Pub', email: 'manager@westendpub.ca', phone: '416-555-3005', company: 'West End Pub', address: '850 Bloor St W', city: 'Toronto', province: 'ON', postalCode: 'M6G 1M2', status: 'inactive', plan: 'basic', notes: 'Paused service. May resume in spring.', createdDate: '2024-02-01' },
+  ];
+
+  // Invoices
+  const invoices = [
+    { id: 'inv1', invoiceNumber: 'INV-0001', customerId: 'cust2', date: format(subDays(today, 45), 'yyyy-MM-dd'), dueDate: format(subDays(today, 15), 'yyyy-MM-dd'), items: [{ description: 'Event staffing - 12 servers', quantity: 12, rate: 250 }, { description: 'Bar setup & service', quantity: 1, rate: 800 }], subtotal: 3800, tax: 13, total: 4294, notes: 'Corporate holiday gala', status: 'paid', paidDate: format(subDays(today, 10), 'yyyy-MM-dd') },
+    { id: 'inv2', invoiceNumber: 'INV-0002', customerId: 'cust1', date: format(subDays(today, 30), 'yyyy-MM-dd'), dueDate: format(subDays(today, 0), 'yyyy-MM-dd'), items: [{ description: 'Weekly catering service', quantity: 4, rate: 450 }, { description: 'Delivery charges', quantity: 4, rate: 35 }], subtotal: 1940, tax: 13, total: 2192.2, notes: 'January catering', status: 'sent' },
+    { id: 'inv3', invoiceNumber: 'INV-0003', customerId: 'cust2', date: format(subDays(today, 15), 'yyyy-MM-dd'), dueDate: format(addDays(today, 15), 'yyyy-MM-dd'), items: [{ description: 'Event staffing - 8 servers', quantity: 8, rate: 250 }, { description: 'Kitchen staff', quantity: 3, rate: 300 }], subtotal: 2900, tax: 13, total: 3277, notes: 'Product launch event', status: 'sent' },
+    { id: 'inv4', invoiceNumber: 'INV-0004', customerId: 'cust4', date: format(subDays(today, 60), 'yyyy-MM-dd'), dueDate: format(subDays(today, 30), 'yyyy-MM-dd'), items: [{ description: 'Consulting services', quantity: 10, rate: 150 }, { description: 'Training materials', quantity: 1, rate: 500 }], subtotal: 2000, tax: 13, total: 2260, notes: 'Staff training program', status: 'paid', paidDate: format(subDays(today, 25), 'yyyy-MM-dd') },
+    { id: 'inv5', invoiceNumber: 'INV-0005', customerId: 'cust3', date: format(subDays(today, 5), 'yyyy-MM-dd'), dueDate: format(addDays(today, 25), 'yyyy-MM-dd'), items: [{ description: 'Monthly supply order', quantity: 1, rate: 680 }], subtotal: 680, tax: 13, total: 768.4, notes: '', status: 'draft' },
+    { id: 'inv6', invoiceNumber: 'INV-0006', customerId: 'cust4', date: format(subDays(today, 90), 'yyyy-MM-dd'), dueDate: format(subDays(today, 60), 'yyyy-MM-dd'), items: [{ description: 'Recruitment assistance', quantity: 1, rate: 3500 }], subtotal: 3500, tax: 13, total: 3955, notes: '', status: 'overdue' },
+  ];
+
+  // Conversations
+  const conversations = [
+    { id: 'conv1', type: 'direct', participantIds: ['1', '2'], name: '', messages: [
+      { id: 'msg1', senderId: '1', text: 'Hey Mike, can you cover the bar tonight?', timestamp: subDays(today, 1).toISOString(), readBy: ['1', '2'] },
+      { id: 'msg2', senderId: '2', text: 'Sure! What time do you need me?', timestamp: subDays(today, 1).toISOString(), readBy: ['1', '2'] },
+      { id: 'msg3', senderId: '1', text: 'From 6pm. Thanks so much!', timestamp: subDays(today, 1).toISOString(), readBy: ['1', '2'] },
+    ], createdAt: subDays(today, 5).toISOString() },
+    { id: 'conv2', type: 'direct', participantIds: ['1', '5'], name: '', messages: [
+      { id: 'msg4', senderId: '5', text: 'Sarah, the uptown inventory is done. All looks good.', timestamp: subDays(today, 2).toISOString(), readBy: ['1', '5'] },
+      { id: 'msg5', senderId: '1', text: 'Perfect, thanks Lisa!', timestamp: subDays(today, 2).toISOString(), readBy: ['1', '5'] },
+    ], createdAt: subDays(today, 10).toISOString() },
+    { id: 'conv3', type: 'group', participantIds: ['1', '4', '8', '10'], name: 'Kitchen Team', messages: [
+      { id: 'msg6', senderId: '8', text: 'New specials menu is finalized. Please review.', timestamp: subDays(today, 1).toISOString(), readBy: ['1', '8'] },
+      { id: 'msg7', senderId: '4', text: 'Looks great Dave! I can prep the sauces tomorrow.', timestamp: subDays(today, 1).toISOString(), readBy: ['4', '8'] },
+      { id: 'msg8', senderId: '10', text: 'I will handle the appetizer prep', timestamp: subDays(today, 1).toISOString(), readBy: ['10'] },
+    ], createdAt: subDays(today, 30).toISOString() },
+  ];
+
+  // Timesheets
+  const timesheets = [];
+
+  // Open Shift Bids
+  const openShiftBids = [];
+
+  // Audit Log
+  const auditLog = [
+    { id: 'al1', action: 'employee_add', entityType: 'employee', entityId: '12', details: 'Kevin Patel added as Dishwasher', userId: '1', timestamp: subDays(today, 30).toISOString() },
+    { id: 'al2', action: 'shift_publish', entityType: 'shift', entityId: '', details: 'Published 15 shifts for current week', userId: '1', timestamp: subDays(today, 7).toISOString() },
+    { id: 'al3', action: 'absence_approve', entityType: 'absence', entityId: 'abs1', details: 'Approved sick leave for Emily Davis', userId: '1', timestamp: subDays(today, 3).toISOString() },
+    { id: 'al4', action: 'clock_in', entityType: 'time_entry', entityId: '2', details: 'Mike Chen clocked in at Downtown', userId: '2', timestamp: subDays(today, 1).toISOString() },
+    { id: 'al5', action: 'customer_add', entityType: 'customer', entityId: 'cust1', details: 'Added customer Maple Leaf Catering Co.', userId: '1', timestamp: subDays(today, 60).toISOString() },
+    { id: 'al6', action: 'invoice_create', entityType: 'invoice', entityId: 'inv1', details: 'Created invoice INV-0001 for $4,294', userId: '1', timestamp: subDays(today, 45).toISOString() },
+    { id: 'al7', action: 'invoice_paid', entityType: 'invoice', entityId: 'inv1', details: 'Invoice INV-0001 marked as paid', userId: '1', timestamp: subDays(today, 10).toISOString() },
+    { id: 'al8', action: 'settings_change', entityType: 'settings', entityId: '', details: 'Payroll period changed to biweekly', userId: '1', timestamp: subDays(today, 20).toISOString() },
+  ];
+
+  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses, customers, invoices, conversations, timesheets, openShiftBids, auditLog };
 }
