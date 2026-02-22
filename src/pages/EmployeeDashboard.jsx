@@ -1,16 +1,15 @@
 import { Link } from 'react-router-dom';
 import {
-  Clock, CalendarDays, CalendarOff, ListTodo, MessageSquare, ArrowRight,
+  Clock, CalendarDays, CalendarOff, ListTodo, ArrowRight,
   CheckCircle2, GraduationCap, ClipboardList, BookOpen, Calendar,
 } from 'lucide-react';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { formatTime, formatDuration, getInitials } from '../utils/helpers';
 import { ACCESS_LABELS } from '../context/AppContext';
 
 export default function EmployeeDashboard({
   locationBar, currentUser, userAccess,
   myShiftsToday, myUpcomingShifts, myTasks, myTraining, mySurveys, myAbsences, myActiveClockIn,
-  recentPosts,
 }) {
   return (
     <div className="dashboard">
@@ -208,44 +207,6 @@ export default function EmployeeDashboard({
           </div>
         </div>
 
-        {/* Recent Newsfeed */}
-        <div className="card">
-          <div className="card__header">
-            <h2 className="card__title"><MessageSquare size={18} /> Recent Posts</h2>
-            <Link to="/newsfeed" className="card__header-link">View All</Link>
-          </div>
-          <div className="card__body">
-            {recentPosts.length === 0 ? (
-              <div className="empty-state"><MessageSquare size={40} className="empty-state__icon" /><p>No posts yet</p></div>
-            ) : (
-              <div className="post-list">
-                {recentPosts.map((post) => (
-                  <div key={post.id} className="post-item">
-                    <div className="post-item__avatar" style={{ background: post.author?.color || '#94a3b8' }}>
-                      {post.author ? getInitials(post.author.name) : '?'}
-                    </div>
-                    <div className="post-item__info">
-                      <div className="post-item__header">
-                        <span className="post-item__author">{post.author?.name || 'Unknown'}</span>
-                        {post.createdAt && <span className="post-item__time">{formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}</span>}
-                      </div>
-                      <div className="post-item__text">{post.content?.substring(0, 80)}{post.content?.length > 80 ? '...' : ''}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions for employees */}
-      <div className="quick-actions-bar">
-        <Link to="/schedule" className="quick-action-btn"><CalendarDays size={18} /> My Schedule</Link>
-        <Link to="/time-clock" className="quick-action-btn"><Clock size={18} /> Time Clock</Link>
-        <Link to="/absences" className="quick-action-btn"><CalendarOff size={18} /> Request Time Off</Link>
-        <Link to="/tasks" className="quick-action-btn"><ListTodo size={18} /> My Tasks</Link>
-        <Link to="/newsfeed" className="quick-action-btn"><MessageSquare size={18} /> Newsfeed</Link>
       </div>
     </div>
   );

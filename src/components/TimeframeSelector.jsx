@@ -130,7 +130,7 @@ export default function TimeframeSelector({ value, onChange }) {
 
   return (
     <div className="timeframe-selector">
-      <div className="timeframe-selector__controls">
+      <div className="timeframe-selector__top-row">
         {/* Dropdown */}
         <div className="timeframe-selector__dropdown-wrap">
           <Calendar size={16} className="timeframe-selector__dropdown-icon" />
@@ -153,27 +153,27 @@ export default function TimeframeSelector({ value, onChange }) {
             <button className="timeframe-selector__nav" onClick={() => handleNav('next')}><ChevronRight size={16} /></button>
           </div>
         )}
+      </div>
 
-        {/* Calendar date pickers - always visible */}
-        <div className="timeframe-selector__dates">
-          <div className="timeframe-selector__date-field">
-            <label className="timeframe-selector__date-label">From</label>
-            <input
-              type="date"
-              className="timeframe-selector__date-input"
-              value={startDate}
-              onChange={(e) => handleDateChange('startDate', e.target.value)}
-            />
-          </div>
-          <div className="timeframe-selector__date-field">
-            <label className="timeframe-selector__date-label">To</label>
-            <input
-              type="date"
-              className="timeframe-selector__date-input"
-              value={endDate}
-              onChange={(e) => handleDateChange('endDate', e.target.value)}
-            />
-          </div>
+      {/* Calendar date pickers - always visible on own row */}
+      <div className="timeframe-selector__dates">
+        <div className="timeframe-selector__date-field">
+          <label className="timeframe-selector__date-label">From</label>
+          <input
+            type="date"
+            className="timeframe-selector__date-input"
+            value={startDate}
+            onChange={(e) => handleDateChange('startDate', e.target.value)}
+          />
+        </div>
+        <div className="timeframe-selector__date-field">
+          <label className="timeframe-selector__date-label">To</label>
+          <input
+            type="date"
+            className="timeframe-selector__date-input"
+            value={endDate}
+            onChange={(e) => handleDateChange('endDate', e.target.value)}
+          />
         </div>
       </div>
     </div>

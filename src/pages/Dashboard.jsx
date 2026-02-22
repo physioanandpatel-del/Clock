@@ -96,5 +96,5 @@ export default function Dashboard() {
     return <ManagerDashboard locationBar={locationBar} stats={stats} targetPercent={targetPercent} isOverTarget={isOverTarget} todayShifts={todayShifts} activeEntries={activeEntries} pendingAbsencesList={pendingAbsencesList} recentTasks={recentTasks} recentPosts={recentPosts} celebrations={celebrations} />;
   }
 
-  return <EmployeeDashboard locationBar={locationBar} currentUser={currentUser} userAccess={userAccess} myShiftsToday={myShiftsToday} myUpcomingShifts={myUpcomingShifts} myTasks={myTasks} myTraining={myTraining} mySurveys={mySurveys} myAbsences={myAbsences} myActiveClockIn={myActiveClockIn} recentPosts={recentPosts} />;
+  return <EmployeeDashboard locationBar={locationBar} currentUser={currentUser} userAccess={userAccess} myShiftsToday={myShiftsToday} myUpcomingShifts={myUpcomingShifts} myTasks={myTasks} myTraining={myTraining} mySurveys={mySurveys} myAbsences={myAbsences} myActiveClockIn={myActiveClockIn} />;
 }
