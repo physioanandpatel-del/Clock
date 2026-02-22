@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, addYears, subYears, parseISO } from 'date-fns';
+import DatePicker from './DatePicker';
 import './TimeframeSelector.css';
 
 const PRESETS = [
@@ -159,20 +160,16 @@ export default function TimeframeSelector({ value, onChange }) {
       <div className="timeframe-selector__dates">
         <div className="timeframe-selector__date-field">
           <label className="timeframe-selector__date-label">From</label>
-          <input
-            type="date"
-            className="timeframe-selector__date-input"
+          <DatePicker
             value={startDate}
-            onChange={(e) => handleDateChange('startDate', e.target.value)}
+            onChange={(val) => handleDateChange('startDate', val)}
           />
         </div>
         <div className="timeframe-selector__date-field">
           <label className="timeframe-selector__date-label">To</label>
-          <input
-            type="date"
-            className="timeframe-selector__date-input"
+          <DatePicker
             value={endDate}
-            onChange={(e) => handleDateChange('endDate', e.target.value)}
+            onChange={(val) => handleDateChange('endDate', val)}
           />
         </div>
       </div>
