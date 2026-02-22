@@ -5,7 +5,7 @@ import { generateId } from '../utils/helpers';
 const AppContext = createContext(null);
 
 const STORAGE_KEY = 'clock-app-data';
-const DATA_VERSION = 5; // Increment when sample data changes significantly
+const DATA_VERSION = 6; // Increment when sample data changes significantly
 
 // Access level hierarchy (higher index = more access)
 export const ACCESS_LEVELS = ['employee', 'manager', 'location_admin', 'master_admin'];
@@ -50,6 +50,13 @@ function loadState() {
       if (!data.currentUserId) data.currentUserId = data.employees?.[0]?.id || '1';
       if (!data.accessLevels) data.accessLevels = ACCESS_LEVELS;
       if (!data.groups) data.groups = ['Front of House', 'Back of House', 'Management', 'Training', 'Opening Crew', 'Closing Crew'];
+      // New feature data migration
+      if (!data.customers) data.customers = [];
+      if (!data.invoices) data.invoices = [];
+      if (!data.conversations) data.conversations = [];
+      if (!data.timesheets) data.timesheets = [];
+      if (!data.openShiftBids) data.openShiftBids = [];
+      if (!data.auditLog) data.auditLog = [];
       // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel + Sling fields + enriched fields
       data.employees = data.employees.map((e) => ({
         ...e,
@@ -415,6 +422,81 @@ function reducer(state, action) {
         groups: state.groups.filter((g) => g !== action.payload),
         employees: state.employees.map((e) => ({ ...e, groups: (e.groups || []).filter((g) => g !== action.payload) })),
       };
+    // Customers
+    case 'ADD_CUSTOMER': {
+      const customer = { ...action.payload, id: generateId() };
+      return { ...state, customers: [...(state.customers || []), customer] };
+    }
+    case 'UPDATE_CUSTOMER':
+      return { ...state, customers: (state.customers || []).map((c) => c.id === action.payload.id ? { ...c, ...action.payload } : c) };
+    case 'DELETE_CUSTOMER':
+      return { ...state, customers: (state.customers || []).filter((c) => c.id !== action.payload), invoices: (state.invoices || []).filter((i) => i.customerId !== action.payload) };
+
+    // Invoices
+    case 'ADD_INVOICE': {
+      const invoice = { ...action.payload, id: generateId() };
+      return { ...state, invoices: [...(state.invoices || []), invoice] };
+    }
+    case 'UPDATE_INVOICE':
+      return { ...state, invoices: (state.invoices || []).map((i) => i.id === action.payload.id ? { ...i, ...action.payload } : i) };
+    case 'DELETE_INVOICE':
+      return { ...state, invoices: (state.invoices || []).filter((i) => i.id !== action.payload) };
+
+    // Conversations & Messages
+    case 'ADD_CONVERSATION': {
+      const conv = { ...action.payload, id: generateId(), messages: [], createdAt: new Date().toISOString() };
+      return { ...state, conversations: [...(state.conversations || []), conv] };
+    }
+    case 'SEND_MESSAGE': {
+      const { conversationId, senderId, text } = action.payload;
+      const msg = { id: generateId(), senderId, text, timestamp: new Date().toISOString(), readBy: [senderId] };
+      return { ...state, conversations: (state.conversations || []).map((c) => c.id === conversationId ? { ...c, messages: [...c.messages, msg] } : c) };
+    }
+    case 'MARK_MESSAGES_READ': {
+      const { conversationId, userId } = action.payload;
+      return { ...state, conversations: (state.conversations || []).map((c) => {
+        if (c.id !== conversationId) return c;
+        return { ...c, messages: c.messages.map((m) => m.readBy?.includes(userId) ? m : { ...m, readBy: [...(m.readBy || []), userId] }) };
+      }) };
+    }
+
+    // Timesheets
+    case 'SUBMIT_TIMESHEET': {
+      const { employeeId, weekStart, weekEnd } = action.payload;
+      const existing = (state.timesheets || []).find((t) => t.employeeId === employeeId && t.weekStart === weekStart);
+      if (existing) {
+        return { ...state, timesheets: state.timesheets.map((t) => t.id === existing.id ? { ...t, status: 'submitted', submittedDate: new Date().toISOString(), notes: '' } : t) };
+      }
+      const ts = { id: generateId(), employeeId, weekStart, weekEnd, status: 'submitted', submittedDate: new Date().toISOString(), approvedBy: null, approvedDate: null, notes: '' };
+      return { ...state, timesheets: [...(state.timesheets || []), ts] };
+    }
+    case 'APPROVE_TIMESHEET':
+      return { ...state, timesheets: (state.timesheets || []).map((t) => t.id === action.payload.id ? { ...t, status: 'approved', approvedBy: action.payload.approvedBy, approvedDate: new Date().toISOString() } : t) };
+    case 'REJECT_TIMESHEET':
+      return { ...state, timesheets: (state.timesheets || []).map((t) => t.id === action.payload.id ? { ...t, status: 'rejected', notes: action.payload.notes || '' } : t) };
+
+    // Open Shift Bids
+    case 'ADD_OPEN_SHIFT_BID': {
+      const bid = { ...action.payload, id: generateId(), status: 'pending', createdAt: new Date().toISOString() };
+      return { ...state, openShiftBids: [...(state.openShiftBids || []), bid] };
+    }
+    case 'APPROVE_OPEN_SHIFT_BID': {
+      const { bidId, shiftId, employeeId } = action.payload;
+      return {
+        ...state,
+        openShiftBids: (state.openShiftBids || []).map((b) => b.id === bidId ? { ...b, status: 'approved' } : (b.shiftId === shiftId && b.id !== bidId ? { ...b, status: 'denied' } : b)),
+        shifts: state.shifts.map((s) => s.id === shiftId ? { ...s, employeeId } : s),
+      };
+    }
+    case 'DENY_OPEN_SHIFT_BID':
+      return { ...state, openShiftBids: (state.openShiftBids || []).map((b) => b.id === action.payload ? { ...b, status: 'denied' } : b) };
+
+    // Audit Log
+    case 'ADD_AUDIT_LOG': {
+      const entry = { ...action.payload, id: generateId(), timestamp: new Date().toISOString() };
+      return { ...state, auditLog: [...(state.auditLog || []), entry] };
+    }
+
     case 'RESET_DATA':
       return { ...generateSampleData(), _version: DATA_VERSION };
     default:

@@ -1,0 +1,41 @@
+.documents-page { padding: 0; }
+
+.doc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.doc-stat { display: flex; align-items: center; gap: 12px; background: var(--bg-white); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.doc-stat strong { display: block; font-size: 22px; }
+.doc-stat span { font-size: 12px; color: var(--text-secondary); }
+.doc-stat svg { color: var(--text-secondary); }
+.doc-stat--success { border-left: 3px solid var(--success); }
+.doc-stat--success svg { color: var(--success); }
+.doc-stat--warning { border-left: 3px solid var(--warning); }
+.doc-stat--warning svg { color: var(--warning); }
+.doc-stat--danger { border-left: 3px solid var(--danger); }
+.doc-stat--danger svg { color: var(--danger); }
+
+.doc-toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.doc-filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--bg-white); }
+
+.doc-table-wrap { background: var(--bg-white); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow-x: auto; }
+.doc-table { min-width: 700px; }
+
+.doc-name { display: flex; align-items: center; gap: 8px; }
+.doc-icon { font-size: 18px; }
+.doc-employee { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.doc-emp-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 600; }
+.doc-category-badge { display: inline-block; padding: 2px 8px; background: var(--bg); border-radius: 10px; font-size: 12px; color: var(--text-secondary); }
+
+.doc-status { font-size: 12px; font-weight: 500; }
+.doc-status--verified, .doc-status--valid { color: var(--success); }
+.doc-status--expiring_soon { color: var(--warning); }
+.doc-status--expired { color: var(--danger); }
+.doc-expiry { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+.doc-detail-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
+.doc-detail-grid { display: flex; flex-direction: column; gap: 10px; }
+.doc-detail-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.doc-detail-row strong { min-width: 100px; }
+
+@media (max-width: 768px) {
+  .doc-stats { grid-template-columns: repeat(2, 1fr); }
+  .doc-toolbar { flex-direction: column; }
+}

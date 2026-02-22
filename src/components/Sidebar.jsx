@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3, Building2, FileText, CreditCard, Mail, ClipboardCheck, HandMetal, CalendarDays, Shield, FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useApp, hasAccess, ACCESS_LABELS } from '../context/AppContext';
 import { getInitials } from '../utils/helpers';
@@ -9,18 +9,28 @@ import './Sidebar.css';
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', minAccess: 'employee' },
   { to: '/schedule', icon: Calendar, label: 'Schedule', minAccess: 'employee' },
+  { to: '/open-shifts', icon: HandMetal, label: 'Open Shifts', minAccess: 'employee' },
   { to: '/employees', icon: Users, label: 'Employees', minAccess: 'manager' },
   { to: '/time-clock', icon: Clock, label: 'Time Clock', minAccess: 'employee' },
-  { type: 'divider', minAccess: 'manager' },
-  { to: '/locations', icon: MapPin, label: 'Locations', minAccess: 'location_admin' },
+  { to: '/timesheets', icon: ClipboardCheck, label: 'Timesheets', minAccess: 'employee' },
+  { type: 'divider', minAccess: 'employee' },
   { to: '/absences', icon: CalendarOff, label: 'Absences', minAccess: 'employee' },
+  { to: '/vacation-calendar', icon: CalendarDays, label: 'Vacation Calendar', minAccess: 'employee' },
+  { to: '/locations', icon: MapPin, label: 'Locations', minAccess: 'location_admin' },
   { to: '/payroll', icon: DollarSign, label: 'Payroll', minAccess: 'location_admin' },
   { to: '/labour', icon: TrendingUp, label: 'Labour', minAccess: 'manager' },
   { type: 'divider', minAccess: 'employee' },
   { to: '/newsfeed', icon: MessageSquare, label: 'Newsfeed', minAccess: 'employee' },
+  { to: '/messages', icon: Mail, label: 'Messages', minAccess: 'employee' },
   { to: '/tasks', icon: ListTodo, label: 'Tasks', minAccess: 'employee' },
   { to: '/reports', icon: BarChart3, label: 'Reports', minAccess: 'manager' },
+  { type: 'divider', minAccess: 'manager' },
+  { to: '/customers', icon: Building2, label: 'Customers', minAccess: 'manager' },
+  { to: '/billing', icon: FileText, label: 'Billing', minAccess: 'location_admin' },
+  { to: '/subscriptions', icon: CreditCard, label: 'Subscriptions', minAccess: 'location_admin' },
+  { to: '/documents', icon: FolderOpen, label: 'Documents', minAccess: 'manager' },
   { type: 'divider', minAccess: 'master_admin' },
+  { to: '/audit-log', icon: Shield, label: 'Audit Log', minAccess: 'master_admin' },
   { to: '/settings', icon: Settings, label: 'Settings', minAccess: 'master_admin' },
 ];
 

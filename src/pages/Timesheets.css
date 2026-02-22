@@ -1,0 +1,31 @@
+.timesheets-page { padding: 0; }
+
+.timesheets-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.timesheets-week-nav { display: flex; align-items: center; gap: 8px; }
+.timesheets-week-label { font-size: 16px; font-weight: 600; min-width: 200px; text-align: center; }
+
+.timesheets-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.ts-stat { display: flex; align-items: center; gap: 12px; background: var(--bg-white); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: all 0.15s; }
+.ts-stat:hover { box-shadow: var(--shadow-md); }
+.ts-stat--active { border-color: var(--primary); background: var(--primary-light); }
+.ts-stat__value { font-size: 22px; font-weight: 700; }
+.ts-stat__label { font-size: 12px; color: var(--text-secondary); }
+
+.timesheets-table-wrap { background: var(--bg-white); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow-x: auto; }
+.timesheets-table { min-width: 650px; }
+
+.ts-employee { display: flex; align-items: center; gap: 10px; }
+.ts-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.ts-name { font-weight: 600; font-size: 14px; }
+.ts-role { font-size: 12px; color: var(--text-secondary); }
+.ts-hours { font-weight: 700; font-size: 16px; }
+.ts-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
+.ts-note { font-size: 12px; color: var(--danger); margin-top: 4px; font-style: italic; }
+.ts-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.text-sm { font-size: 12px; }
+
+.ts-bulk-actions { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+@media (max-width: 768px) {
+  .timesheets-stats { grid-template-columns: repeat(2, 1fr); }
+}

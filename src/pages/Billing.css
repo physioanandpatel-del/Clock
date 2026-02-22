@@ -1,0 +1,41 @@
+.billing-page { padding: 0; }
+.billing-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.billing-stats .stat-card { display: flex; align-items: center; gap: 16px; }
+.billing-stats .stat-card svg { opacity: 0.5; }
+.stat-card--success { border-left: 3px solid var(--success); }
+.stat-card--warning { border-left: 3px solid var(--warning); }
+.stat-card--danger { border-left: 3px solid var(--danger); }
+.billing-toolbar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.invoices-table-wrap { background: var(--bg-white); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow-x: auto; }
+.invoices-table { min-width: 700px; }
+.invoices-table th { font-size: 12px; }
+.inv-number { font-weight: 600; color: var(--primary); }
+.inv-amount { font-weight: 600; }
+.table-actions { display: flex; gap: 4px; }
+
+.invoice-detail__top { display: flex; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.text-right { text-align: right; }
+.text-bold { font-weight: 600; }
+.total-row { font-weight: 700; font-size: 16px; }
+.invoice-notes { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: var(--radius); font-size: 13px; color: var(--text-secondary); }
+
+.invoice-items-section { margin-top: 20px; }
+.invoice-items-section h4 { margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+.invoice-item-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.item-desc { flex: 3; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; }
+.item-qty { flex: 0.7; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; text-align: center; }
+.item-rate { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; }
+.item-amount { flex: 1; text-align: right; font-weight: 600; font-size: 14px; min-width: 80px; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+
+.invoice-summary { text-align: right; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.invoice-total { font-size: 18px; font-weight: 700; color: var(--primary); margin-top: 4px; }
+
+.table tfoot td { font-weight: 500; padding: 8px 12px; }
+
+@media (max-width: 768px) {
+  .billing-stats { grid-template-columns: repeat(2, 1fr); }
+  .invoice-item-row { flex-wrap: wrap; }
+  .item-desc { flex: 1 1 100%; }
+}
