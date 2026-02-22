@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useApp, hasAccess, ACCESS_LABELS } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { getInitials } from '../utils/helpers';
 import './Sidebar.css';
 
@@ -27,6 +28,7 @@ const navItems = [
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { state, dispatch } = useApp();
+  const { logout } = useAuth();
   const { locations, currentLocationId, employees, currentUserId } = state;
   const currentLocation = locations.find((l) => l.id === currentLocationId);
   const currentUser = employees.find((e) => e.id === currentUserId);
@@ -89,19 +91,6 @@ export default function Sidebar() {
         </nav>
 
         <div className="sidebar__footer">
-          <div className="sidebar__user-switch">
-            <select
-              className="sidebar__user-select"
-              value={currentUserId || ''}
-              onChange={(e) => dispatch({ type: 'SET_CURRENT_USER', payload: e.target.value })}
-            >
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({ACCESS_LABELS[emp.accessLevel || 'employee']})
-                </option>
-              ))}
-            </select>
-          </div>
           {currentUser && (
             <div className="sidebar__user">
               <div className="sidebar__avatar" style={{ background: currentUser.color }}>
@@ -113,6 +102,9 @@ export default function Sidebar() {
               </div>
             </div>
           )}
+          <button className="sidebar__logout" onClick={logout}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </aside>
 

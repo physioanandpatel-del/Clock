@@ -155,7 +155,7 @@ function reducer(state, action) {
     case 'ADD_EMPLOYEE': {
       const employee = {
         ...action.payload,
-        id: generateId(),
+        id: action.payload.id || generateId(),
         locationIds: action.payload.locationIds || [state.currentLocationId],
         roles: action.payload.roles || ['Server'],
         accessLevel: action.payload.accessLevel || 'employee',
