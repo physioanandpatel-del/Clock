@@ -31,7 +31,7 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react';
-import { formatTime, getInitials } from '../utils/helpers';
+import { formatTime, getInitials, getEffectiveRate } from '../utils/helpers';
 import './Schedule.css';
 
 export default function Schedule() {
@@ -122,7 +122,7 @@ export default function Schedule() {
       if (emp) {
         const hrs = differenceInHours(parseISO(s.end), parseISO(s.start));
         totalHours += hrs;
-        totalCost += hrs * emp.hourlyRate;
+        totalCost += hrs * getEffectiveRate(emp, s.position);
       }
     });
     return { totalCost, totalHours };
@@ -168,7 +168,7 @@ export default function Schedule() {
     const emp = locationEmployees.find((e) => e.id === empId);
     if (!emp) return { allowed: true };
     const newHours = differenceInHours(new Date(endTime), new Date(startTime));
-    const newCost = newHours * emp.hourlyRate;
+    const newCost = newHours * getEffectiveRate(emp);
     const projectedCost = weeklyLaborData.totalCost + newCost;
     const projectedPercent = (projectedCost / weeklySales) * 100;
     const projectedPctVsProjectedSales = weeklySalesProjected > 0 ? (projectedCost / weeklySalesProjected) * 100 : null;

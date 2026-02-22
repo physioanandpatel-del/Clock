@@ -13,6 +13,7 @@ export function formatDate(dateStr) {
 export function formatDuration(startStr, endStr) {
   if (!startStr || !endStr) return '--';
   const mins = differenceInMinutes(new Date(endStr), new Date(startStr));
+  if (mins < 0) return '--';
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}h ${m}m`;
@@ -21,6 +22,17 @@ export function formatDuration(startStr, endStr) {
 export function getHoursWorked(startStr, endStr) {
   if (!startStr || !endStr) return 0;
   return differenceInHours(new Date(endStr), new Date(startStr));
+}
+
+export function getEffectiveRate(emp, position) {
+  if (emp.wages && emp.wages.length > 0) {
+    if (position) {
+      const match = emp.wages.find((w) => w.position === position);
+      if (match) return match.rate;
+    }
+    return emp.wages[0].rate;
+  }
+  return emp.hourlyRate || 0;
 }
 
 export function getInitials(name) {
@@ -41,7 +53,7 @@ export function calculateLaborCost(shifts, employees) {
     const emp = employees.find((e) => e.id === shift.employeeId);
     if (emp) {
       const hours = getHoursWorked(shift.start, shift.end);
-      total += hours * emp.hourlyRate;
+      total += hours * getEffectiveRate(emp, shift.position);
     }
   });
   return total;

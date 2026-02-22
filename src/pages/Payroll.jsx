@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { DollarSign } from 'lucide-react';
 import { format, isWithinInterval, parseISO, differenceInDays } from 'date-fns';
-import { getInitials, getHoursWorked } from '../utils/helpers';
+import { getInitials, getHoursWorked, getEffectiveRate } from '../utils/helpers';
 import TimeframeSelector, { calculateRange } from '../components/TimeframeSelector';
 import './Payroll.css';
 
@@ -52,9 +52,10 @@ export default function Payroll() {
       empShifts.forEach((s) => { totalHours += getHoursWorked(s.start, s.end); });
       const regularHours = Math.min(totalHours, overtimeThreshold);
       const overtimeHours = Math.max(0, totalHours - regularHours);
-      const regularPay = regularHours * emp.hourlyRate;
-      const overtimePay = overtimeHours * emp.hourlyRate * 1.5;
-      return { ...emp, totalHours, regularHours, overtimeHours, regularPay, overtimePay, totalPay: regularPay + overtimePay, shiftCount: empShifts.length };
+      const rate = getEffectiveRate(emp);
+      const regularPay = regularHours * rate;
+      const overtimePay = overtimeHours * rate * 1.5;
+      return { ...emp, totalHours, regularHours, overtimeHours, regularPay, overtimePay, totalPay: regularPay + overtimePay, shiftCount: empShifts.length, effectiveRate: rate };
     }).filter((e) => e.shiftCount > 0).sort((a, b) => b.totalPay - a.totalPay);
   }, [locationEmployees, periodShifts, overtimeThreshold]);
 
@@ -138,7 +139,7 @@ export default function Payroll() {
                     <td>{emp.shiftCount}</td>
                     <td>{emp.regularHours}h</td>
                     <td>{emp.overtimeHours > 0 ? `${emp.overtimeHours}h` : '-'}</td>
-                    <td>${emp.hourlyRate}/hr</td>
+                    <td>${emp.effectiveRate}/hr</td>
                     <td>${emp.regularPay.toFixed(2)}</td>
                     <td>{emp.overtimePay > 0 ? `$${emp.overtimePay.toFixed(2)}` : '-'}</td>
                     <td className="payroll-total-cell">${emp.totalPay.toFixed(2)}</td>
