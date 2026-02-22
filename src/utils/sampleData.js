@@ -485,13 +485,20 @@ export function generateSampleData() {
     { id: 'sr4', surveyId: 'sv1', employeeId: '10', sentDate: '2024-07-01', completedDate: '2024-07-02', status: 'completed', answers: [{ questionId: 'q1', value: 5 }, { questionId: 'q2', value: 5 }, { questionId: 'q3', value: 4 }, { questionId: 'q4', value: 'Training kitchen was great, very supportive team' }] },
   ];
 
+  // System Settings
+  const systemSettings = {
+    defaultMultiLocation: false,
+    defaultMaxLocations: 1,
+    defaultMaxEmployees: 10,
+  };
+
   // Customers
   const customers = [
-    { id: 'cust1', name: 'Maple Leaf Catering Co.', email: 'info@mapleleafcatering.ca', phone: '416-555-3001', company: 'Maple Leaf Catering', address: '55 Front St W', city: 'Toronto', province: 'ON', postalCode: 'M5J 1E6', status: 'active', plan: 'professional', notes: 'Long-term client. Weekly catering orders for office lunches.', createdDate: '2024-01-15' },
-    { id: 'cust2', name: 'Riverdale Events Inc.', email: 'events@riverdale.ca', phone: '416-555-3002', company: 'Riverdale Events', address: '100 Broadview Ave', city: 'Toronto', province: 'ON', postalCode: 'M4M 3H3', status: 'active', plan: 'enterprise', notes: 'Handles large-scale events. VIP account. Net-30 payment terms.', createdDate: '2023-11-01' },
-    { id: 'cust3', name: 'Parkdale Bistro Group', email: 'orders@parkdalebistro.ca', phone: '416-555-3003', company: 'Parkdale Bistro', address: '1400 Queen St W', city: 'Toronto', province: 'ON', postalCode: 'M6K 1L4', status: 'active', plan: 'basic', notes: 'Small bistro group. Monthly orders.', createdDate: '2024-06-10' },
-    { id: 'cust4', name: 'Northern Hospitality Ltd.', email: 'ap@northernhospitality.ca', phone: '416-555-3004', company: 'Northern Hospitality', address: '200 Bay St', city: 'Toronto', province: 'ON', postalCode: 'M5J 2J5', status: 'active', plan: 'professional', notes: 'Hotel chain. Multiple locations.', createdDate: '2024-03-20' },
-    { id: 'cust5', name: 'West End Pub', email: 'manager@westendpub.ca', phone: '416-555-3005', company: 'West End Pub', address: '850 Bloor St W', city: 'Toronto', province: 'ON', postalCode: 'M6G 1M2', status: 'inactive', plan: 'basic', notes: 'Paused service. May resume in spring.', createdDate: '2024-02-01' },
+    { id: 'cust1', name: 'Maple Leaf Catering Co.', email: 'info@mapleleafcatering.ca', phone: '416-555-3001', company: 'Maple Leaf Catering', address: '55 Front St W', city: 'Toronto', province: 'ON', postalCode: 'M5J 1E6', status: 'active', plan: 'professional', notes: 'Long-term client. Weekly catering orders for office lunches.', createdDate: '2024-01-15', features: { multiLocation: true, maxLocations: 3, maxEmployees: 50, geofencing: true, payrollIntegration: true, apiAccess: false, customBranding: false } },
+    { id: 'cust2', name: 'Riverdale Events Inc.', email: 'events@riverdale.ca', phone: '416-555-3002', company: 'Riverdale Events', address: '100 Broadview Ave', city: 'Toronto', province: 'ON', postalCode: 'M4M 3H3', status: 'active', plan: 'enterprise', notes: 'Handles large-scale events. VIP account. Net-30 payment terms.', createdDate: '2023-11-01', features: { multiLocation: true, maxLocations: 999, maxEmployees: 999, geofencing: true, payrollIntegration: true, apiAccess: true, customBranding: true } },
+    { id: 'cust3', name: 'Parkdale Bistro Group', email: 'orders@parkdalebistro.ca', phone: '416-555-3003', company: 'Parkdale Bistro', address: '1400 Queen St W', city: 'Toronto', province: 'ON', postalCode: 'M6K 1L4', status: 'active', plan: 'basic', notes: 'Small bistro group. Single location.', createdDate: '2024-06-10', features: { multiLocation: false, maxLocations: 1, maxEmployees: 10, geofencing: false, payrollIntegration: false, apiAccess: false, customBranding: false } },
+    { id: 'cust4', name: 'Northern Hospitality Ltd.', email: 'ap@northernhospitality.ca', phone: '416-555-3004', company: 'Northern Hospitality', address: '200 Bay St', city: 'Toronto', province: 'ON', postalCode: 'M5J 2J5', status: 'active', plan: 'professional', notes: 'Hotel chain. Multiple locations.', createdDate: '2024-03-20', features: { multiLocation: true, maxLocations: 3, maxEmployees: 50, geofencing: true, payrollIntegration: true, apiAccess: false, customBranding: false } },
+    { id: 'cust5', name: 'West End Pub', email: 'manager@westendpub.ca', phone: '416-555-3005', company: 'West End Pub', address: '850 Bloor St W', city: 'Toronto', province: 'ON', postalCode: 'M6G 1M2', status: 'inactive', plan: 'basic', notes: 'Paused service. May resume in spring.', createdDate: '2024-02-01', features: { multiLocation: false, maxLocations: 1, maxEmployees: 10, geofencing: false, payrollIntegration: false, apiAccess: false, customBranding: false } },
   ];
 
   // Invoices
@@ -540,5 +547,5 @@ export function generateSampleData() {
     { id: 'al8', action: 'settings_change', entityType: 'settings', entityId: '', details: 'Payroll period changed to biweekly', userId: '1', timestamp: subDays(today, 20).toISOString() },
   ];
 
-  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses, customers, invoices, conversations, timesheets, openShiftBids, auditLog };
+  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses, customers, invoices, conversations, timesheets, openShiftBids, auditLog, systemSettings };
 }

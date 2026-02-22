@@ -57,6 +57,21 @@ function loadState() {
       if (!data.timesheets) data.timesheets = [];
       if (!data.openShiftBids) data.openShiftBids = [];
       if (!data.auditLog) data.auditLog = [];
+      // System settings migration
+      if (!data.systemSettings) data.systemSettings = { defaultMultiLocation: false, defaultMaxLocations: 1, defaultMaxEmployees: 10 };
+      // Migrate customers: add features field
+      data.customers = (data.customers || []).map((c) => ({
+        ...c,
+        features: c.features || {
+          multiLocation: c.plan === 'enterprise' || c.plan === 'professional',
+          maxLocations: c.plan === 'enterprise' ? 999 : c.plan === 'professional' ? 3 : 1,
+          maxEmployees: c.plan === 'enterprise' ? 999 : c.plan === 'professional' ? 50 : 10,
+          geofencing: c.plan !== 'basic',
+          payrollIntegration: c.plan !== 'basic',
+          apiAccess: c.plan === 'enterprise',
+          customBranding: c.plan === 'enterprise',
+        },
+      }));
       // Migrate employees: locationId -> locationIds, role -> roles, add accessLevel + Sling fields + enriched fields
       data.employees = data.employees.map((e) => ({
         ...e,
@@ -496,6 +511,14 @@ function reducer(state, action) {
       const entry = { ...action.payload, id: generateId(), timestamp: new Date().toISOString() };
       return { ...state, auditLog: [...(state.auditLog || []), entry] };
     }
+
+    // System Settings
+    case 'UPDATE_SYSTEM_SETTINGS':
+      return { ...state, systemSettings: { ...(state.systemSettings || {}), ...action.payload } };
+
+    // Update customer features
+    case 'UPDATE_CUSTOMER_FEATURES':
+      return { ...state, customers: (state.customers || []).map((c) => c.id === action.payload.id ? { ...c, features: { ...(c.features || {}), ...action.payload.features } } : c) };
 
     case 'RESET_DATA':
       return { ...generateSampleData(), _version: DATA_VERSION };

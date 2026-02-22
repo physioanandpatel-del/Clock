@@ -37,12 +37,18 @@ const navItems = [
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { state, dispatch } = useApp();
-  const { locations, currentLocationId, employees, currentUserId } = state;
+  const { locations, currentLocationId, employees, currentUserId, systemSettings } = state;
   const currentLocation = locations.find((l) => l.id === currentLocationId);
   const currentUser = employees.find((e) => e.id === currentUserId);
   const userAccess = currentUser?.accessLevel || 'employee';
+  const multiLocationEnabled = systemSettings?.defaultMultiLocation !== false && locations.length > 1;
 
-  const visibleNav = navItems.filter((item) => hasAccess(userAccess, item.minAccess));
+  const visibleNav = navItems.filter((item) => {
+    if (!hasAccess(userAccess, item.minAccess)) return false;
+    // Hide Locations nav if multi-location is disabled
+    if (item.to === '/locations' && !multiLocationEnabled) return false;
+    return true;
+  });
 
   return (
     <>
@@ -56,7 +62,7 @@ export default function Sidebar() {
           <span className="sidebar__title">Clock</span>
         </div>
 
-        {locations.length > 1 && (
+        {multiLocationEnabled && (
           <div className="sidebar__location-switch">
             <select
               className="sidebar__location-select"
@@ -70,7 +76,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {locations.length === 1 && currentLocation && (
+        {!multiLocationEnabled && currentLocation && (
           <div className="sidebar__location-label">
             <MapPin size={14} />
             <span>{currentLocation.name}</span>
