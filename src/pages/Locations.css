@@ -1,0 +1,81 @@
+.locations-page {
+  max-width: 1200px;
+}
+
+.locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.location-card {
+  background: var(--bg-white);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.location-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.location-card--active {
+  border-color: var(--primary);
+}
+
+.location-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 20px 0;
+}
+
+.location-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-card__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.location-card__body {
+  padding: 12px 20px 20px;
+}
+
+.location-card__name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.location-card__address,
+.location-card__phone {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 2px 0;
+}
+
+.location-card__stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.location-card__switch {
+  margin-top: 12px;
+  width: 100%;
+  justify-content: center;
+}

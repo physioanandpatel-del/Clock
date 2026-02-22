@@ -1,0 +1,165 @@
+.absences-page {
+  max-width: 900px;
+}
+
+.absences-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.absences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.absence-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.absence-card__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.absence-card__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.absence-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.absence-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.absence-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.absence-card__notes {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.absence-type {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.absence-type--sick {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.absence-type--vacation {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.absence-type--personal {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.absence-type--other {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+
+.absence-card__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.absence-card__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.badge--pending {
+  background: var(--warning-light);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.badge--approved {
+  background: var(--success-light);
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.badge--denied {
+  background: var(--danger-light);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.btn--approve {
+  color: var(--success);
+}
+
+.btn--approve:hover {
+  background: var(--success-light);
+}
+
+.btn--deny {
+  color: var(--danger);
+}
+
+.btn--deny:hover {
+  background: var(--danger-light);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}

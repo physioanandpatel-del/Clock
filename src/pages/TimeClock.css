@@ -1,0 +1,228 @@
+.timeclock-page {
+  max-width: 900px;
+}
+
+.timeclock-display {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.timeclock-display__icon {
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.timeclock-display__time {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeclock-display__status {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.timeclock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeclock-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.15s;
+}
+
+.timeclock-card--active {
+  border-color: var(--success);
+  background: #f0fdf4;
+}
+
+.timeclock-card__main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.timeclock-card__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.timeclock-card__info {
+  flex: 1;
+}
+
+.timeclock-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.timeclock-card__role {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.timeclock-card__time {
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.clock-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.clock-btn--in {
+  background: var(--success);
+  color: #fff;
+}
+
+.clock-btn--in:hover {
+  background: #16a34a;
+}
+
+.clock-btn--out {
+  background: var(--danger);
+  color: #fff;
+}
+
+.clock-btn--out:hover {
+  background: #dc2626;
+}
+
+.timeclock-card__history {
+  padding: 8px 20px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.timeclock-card__history-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.timeclock-card__history-entry {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.timeclock-card__history-entry--flagged {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.geofence-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+  border: 1px solid;
+}
+
+.geofence-status--inside {
+  background: var(--success-light);
+  border-color: #86efac;
+  color: #166534;
+}
+
+.geofence-status--outside {
+  background: var(--danger-light);
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.geofence-status--unknown {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.geofence-status__icon {
+  flex-shrink: 0;
+}
+
+.geofence-status__info {
+  flex: 1;
+}
+
+.geofence-status__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.geofence-status__detail {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.geofence-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--warning-light);
+  color: #92400e;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.geofence-flag {
+  color: var(--danger);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.geofence-ok {
+  color: var(--success);
+  font-weight: 500;
+  font-size: 11px;
+}
