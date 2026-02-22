@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TrendingUp, Plus, X, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, DollarSign, BarChart3, Target, Calendar, Eye, Edit2, Trash2, Zap } from 'lucide-react';
-import { format, subDays, parseISO, isWithinInterval, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays } from 'date-fns';
+import { format, subDays, parseISO, isWithinInterval, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, differenceInDays } from 'date-fns';
 import { getHoursWorked, getInitials } from '../utils/helpers';
+import TimeframeSelector, { calculateRange } from '../components/TimeframeSelector';
 import './Labour.css';
 
 export default function Labour() {
@@ -17,7 +18,10 @@ export default function Labour() {
   const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
 
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [timeframe, setTimeframe] = useState(() => {
+    const range = calculateRange('weekly');
+    return { preset: 'weekly', startDate: format(range.start, 'yyyy-MM-dd'), endDate: format(range.end, 'yyyy-MM-dd') };
+  });
   const [showSalesModal, setShowSalesModal] = useState(false);
   const [salesModalMode, setSalesModalMode] = useState('single'); // 'single' | 'bulk' | 'projected'
   const [salesForm, setSalesForm] = useState({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' });
@@ -26,16 +30,17 @@ export default function Labour() {
   const [projectionRule, setProjectionRule] = useState('historical_avg');
   const [projectionAdjustment, setProjectionAdjustment] = useState(20);
 
-  const currentWeekStart = useMemo(() => addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), weekOffset), [weekOffset]);
-  const currentWeekEnd = useMemo(() => endOfWeek(currentWeekStart, { weekStartsOn: 1 }), [currentWeekStart]);
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i)), [currentWeekStart]);
+  const rangeStart = parseISO(timeframe.startDate);
+  const rangeEnd = parseISO(timeframe.endDate);
+  const rangeDaysCount = Math.max(1, differenceInDays(rangeEnd, rangeStart) + 1);
+  const rangeDaysList = useMemo(() => Array.from({ length: rangeDaysCount }, (_, i) => addDays(rangeStart, i)), [rangeStart, rangeDaysCount]);
 
   // Calculate weekly labour cost
   const weeklyLabor = useMemo(() => {
     const weekShifts = shifts.filter((s) => {
       if (!locationEmpIds.has(s.employeeId)) return false;
       const d = parseISO(s.start);
-      return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd });
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
     });
     let totalCost = 0;
     let totalHours = 0;
@@ -52,23 +57,23 @@ export default function Labour() {
       }
     });
     return { totalCost, totalHours, shiftCount: weekShifts.length, byEmployee };
-  }, [shifts, locationEmpIds, locationEmployees, currentWeekStart, currentWeekEnd]);
+  }, [shifts, locationEmpIds, locationEmployees, rangeStart, rangeEnd]);
 
   // Weekly actual sales
   const weeklySalesActual = useMemo(() => {
     return salesEntries
       .filter((s) => s.locationId === currentLocationId && (s.type || 'actual') === 'actual')
-      .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }); })
+      .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: rangeStart, end: rangeEnd }); })
       .reduce((sum, s) => sum + s.amount, 0);
-  }, [salesEntries, currentLocationId, currentWeekStart, currentWeekEnd]);
+  }, [salesEntries, currentLocationId, rangeStart, rangeEnd]);
 
   // Weekly projected sales
   const weeklySalesProjected = useMemo(() => {
     return salesEntries
       .filter((s) => s.locationId === currentLocationId && s.type === 'projected')
-      .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }); })
+      .filter((s) => { const d = parseISO(s.date); return isWithinInterval(d, { start: rangeStart, end: rangeEnd }); })
       .reduce((sum, s) => sum + s.amount, 0);
-  }, [salesEntries, currentLocationId, currentWeekStart, currentWeekEnd]);
+  }, [salesEntries, currentLocationId, rangeStart, rangeEnd]);
 
   // Use actual if available, otherwise projected
   const effectiveSales = weeklySalesActual || weeklySalesProjected;
@@ -88,7 +93,7 @@ export default function Labour() {
   const historicalData = useMemo(() => {
     const weeks = [];
     for (let w = 1; w <= 8; w++) {
-      const ws = subWeeks(currentWeekStart, w);
+      const ws = subWeeks(rangeStart, w);
       const we = endOfWeek(ws, { weekStartsOn: 1 });
       const actual = salesEntries
         .filter((s) => s.locationId === currentLocationId && (s.type || 'actual') === 'actual')
@@ -114,7 +119,7 @@ export default function Labour() {
       weeks.push({ weekStart: ws, actual, projected, labor, percent: pct, accuracy });
     }
     return weeks;
-  }, [salesEntries, shifts, currentLocationId, locationEmpIds, locationEmployees, currentWeekStart]);
+  }, [salesEntries, shifts, currentLocationId, locationEmpIds, locationEmployees, rangeStart]);
 
   // Averages
   const avgWeeklySales = useMemo(() => {
@@ -131,13 +136,13 @@ export default function Labour() {
 
   // Daily sales breakdown (both actual and projected)
   const dailySales = useMemo(() => {
-    return weekDays.map((day) => {
+    return rangeDaysList.map((day) => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const actual = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && (s.type || 'actual') === 'actual');
       const projected = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && s.type === 'projected');
       return { date: dateStr, dayLabel: format(day, 'EEE'), actual: actual?.amount || 0, projected: projected?.amount || 0, actualId: actual?.id, projectedId: projected?.id };
     });
-  }, [salesEntries, currentLocationId, weekDays]);
+  }, [salesEntries, currentLocationId, rangeDaysList]);
 
   // Maximum daily amount for bar scaling
   const maxDailyAmount = Math.max(...dailySales.map((d) => Math.max(d.actual, d.projected)), 1);
@@ -160,7 +165,7 @@ export default function Labour() {
   function openBulkSales() {
     setSalesModalMode('bulk');
     const initial = {};
-    weekDays.forEach((day) => {
+    rangeDaysList.forEach((day) => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const existing = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && (s.type || 'actual') === 'actual');
       initial[dateStr] = existing ? String(existing.amount) : '';
@@ -172,7 +177,7 @@ export default function Labour() {
   function openProjectedSales() {
     setSalesModalMode('projected');
     const initial = {};
-    weekDays.forEach((day) => {
+    rangeDaysList.forEach((day) => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const existing = salesEntries.find((s) => s.locationId === currentLocationId && s.date === dateStr && s.type === 'projected');
       initial[dateStr] = existing ? String(existing.amount) : '';
@@ -235,7 +240,7 @@ export default function Labour() {
     if (projectionRule === 'historical_avg' || projectionRule === 'historical_avg_adj') {
       if (avgWeeklySales <= 0) return;
       const dayAvg = getDayOfWeekAverages();
-      weekDays.forEach((day) => {
+      rangeDaysList.forEach((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const dow = day.getDay();
         let amount = (dayAvg[dow] && dayAvg[dow].length > 0)
@@ -245,7 +250,7 @@ export default function Labour() {
       });
     } else if (projectionRule === 'last_year' || projectionRule === 'last_year_adj') {
       const dayAvg = getDayOfWeekAverages();
-      weekDays.forEach((day) => {
+      rangeDaysList.forEach((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const lastYearDate = format(subWeeks(day, 52), 'yyyy-MM-dd');
         const entry = salesEntries.find((s) => s.locationId === currentLocationId && s.date === lastYearDate && (s.type || 'actual') === 'actual');
@@ -263,7 +268,7 @@ export default function Labour() {
       });
     } else if (projectionRule === 'last_week' || projectionRule === 'last_week_adj') {
       const dayAvg = getDayOfWeekAverages();
-      weekDays.forEach((day) => {
+      rangeDaysList.forEach((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const lastWeekDate = format(subWeeks(day, 1), 'yyyy-MM-dd');
         const entry = salesEntries.find((s) => s.locationId === currentLocationId && s.date === lastWeekDate && (s.type || 'actual') === 'actual');
@@ -302,13 +307,7 @@ export default function Labour() {
         </div>
       </div>
 
-      {/* Week Navigation */}
-      <div className="labour-nav">
-        <button className="btn btn--icon" onClick={() => setWeekOffset((o) => o - 1)}>&larr;</button>
-        <span className="labour-nav__label">{format(currentWeekStart, 'MMM d')} - {format(currentWeekEnd, 'MMM d, yyyy')}</span>
-        <button className="btn btn--icon" onClick={() => setWeekOffset(0)}>Today</button>
-        <button className="btn btn--icon" onClick={() => setWeekOffset((o) => o + 1)}>&rarr;</button>
-      </div>
+      <TimeframeSelector value={timeframe} onChange={setTimeframe} />
 
       {/* Summary Cards */}
       <div className="labour-summary">
@@ -508,7 +507,7 @@ export default function Labour() {
                 </div>
                 <div className="metric-card">
                   <span className="metric-value">{weeklyLabor.totalHours}h</span>
-                  <span className="metric-label">Hours This Week</span>
+                  <span className="metric-label">Total Hours</span>
                 </div>
                 <div className="metric-card">
                   <span className="metric-value">${weeklyLabor.totalHours > 0 ? (weeklyLabor.totalCost / weeklyLabor.totalHours).toFixed(2) : '0'}</span>
@@ -611,9 +610,9 @@ export default function Labour() {
             {salesModalMode === 'bulk' && (
               <>
                 <div className="modal__body">
-                  <p className="modal__desc">Enter actual sales for each day of the week ({format(currentWeekStart, 'MMM d')} - {format(currentWeekEnd, 'MMM d')}).</p>
+                  <p className="modal__desc">Enter actual sales for each day ({format(rangeStart, 'MMM d')} - {format(rangeEnd, 'MMM d')}).</p>
                   <div className="bulk-sales-grid">
-                    {weekDays.map((day) => {
+                    {rangeDaysList.map((day) => {
                       const dateStr = format(day, 'yyyy-MM-dd');
                       return (
                         <div key={dateStr} className="bulk-sales-row">
@@ -652,7 +651,7 @@ export default function Labour() {
                 <div className="modal__body">
                   <p className="modal__desc">Set projected/estimated sales for each day. These are used to calculate expected labour % when scheduling.</p>
                   <div className="bulk-sales-grid">
-                    {weekDays.map((day) => {
+                    {rangeDaysList.map((day) => {
                       const dateStr = format(day, 'yyyy-MM-dd');
                       return (
                         <div key={dateStr} className="bulk-sales-row">

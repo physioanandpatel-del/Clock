@@ -1,11 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BarChart3 } from 'lucide-react';
-import { format, subDays, parseISO, isWithinInterval, startOfWeek, endOfWeek, differenceInDays } from 'date-fns';
+import { format, parseISO, isWithinInterval, differenceInDays, addDays } from 'date-fns';
 import { getHoursWorked, getInitials } from '../utils/helpers';
+import TimeframeSelector, { calculateRange } from '../components/TimeframeSelector';
 import './Reports.css';
 
 const TABS = ['Labor', 'Attendance', 'Time Off', 'Sales'];
+
+function initTimeframe() {
+  const range = calculateRange('weekly');
+  return { preset: 'weekly', startDate: format(range.start, 'yyyy-MM-dd'), endDate: format(range.end, 'yyyy-MM-dd') };
+}
 
 export default function Reports() {
   const { state } = useApp();
@@ -16,16 +22,17 @@ export default function Reports() {
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
 
   const [activeTab, setActiveTab] = useState('Labor');
-  const [range, setRange] = useState(7);
+  const [timeframe, setTimeframe] = useState(initTimeframe);
 
-  const today = new Date();
-  const rangeStart = subDays(today, range);
+  const rangeStart = parseISO(timeframe.startDate);
+  const rangeEnd = parseISO(timeframe.endDate);
+  const rangeDays = Math.max(1, differenceInDays(rangeEnd, rangeStart) + 1);
 
   // Labor data by day
   const laborByDay = useMemo(() => {
     const days = [];
-    for (let d = range; d >= 0; d--) {
-      const date = subDays(today, d);
+    for (let d = 0; d < rangeDays; d++) {
+      const date = addDays(rangeStart, d);
       const dateStr = format(date, 'yyyy-MM-dd');
       const dayShifts = shifts.filter((s) => locationEmpIds.has(s.employeeId) && format(parseISO(s.start), 'yyyy-MM-dd') === dateStr);
       let cost = 0, hours = 0;
@@ -34,10 +41,10 @@ export default function Reports() {
         if (emp) { const h = getHoursWorked(s.start, s.end); hours += h; cost += h * emp.hourlyRate; }
       });
       const sales = salesEntries.filter((s) => s.locationId === currentLocationId && s.date === dateStr).reduce((sum, s) => sum + s.amount, 0);
-      days.push({ date: dateStr, label: format(date, 'EEE'), cost, hours, sales });
+      days.push({ date: dateStr, label: rangeDays <= 14 ? format(date, 'EEE') : format(date, 'M/d'), cost, hours, sales });
     }
     return days;
-  }, [shifts, salesEntries, locationEmployees, locationEmpIds, currentLocationId, range, today]);
+  }, [shifts, salesEntries, locationEmployees, locationEmpIds, currentLocationId, rangeStart, rangeDays]);
 
   const maxSales = Math.max(...laborByDay.map((d) => d.sales), 1);
   const maxCost = Math.max(...laborByDay.map((d) => d.cost), 1);
@@ -50,14 +57,14 @@ export default function Reports() {
   // Attendance
   const attendanceData = useMemo(() => {
     return locationEmployees.map((emp) => {
-      const entries = timeEntries.filter((t) => t.employeeId === emp.id && t.status === 'completed' && isWithinInterval(parseISO(t.clockIn), { start: rangeStart, end: today }));
+      const entries = timeEntries.filter((t) => t.employeeId === emp.id && t.status === 'completed' && isWithinInterval(parseISO(t.clockIn), { start: rangeStart, end: rangeEnd }));
       const uniqueDays = new Set(entries.map((t) => format(parseISO(t.clockIn), 'yyyy-MM-dd')));
       const outsideCount = entries.filter((t) => t.geofenceStatus === 'outside').length;
       let totalHrs = 0;
       entries.forEach((t) => { totalHrs += getHoursWorked(t.clockIn, t.clockOut); });
       return { ...emp, daysWorked: uniqueDays.size, totalHrs, entries: entries.length, outsideCount };
     }).sort((a, b) => b.daysWorked - a.daysWorked);
-  }, [locationEmployees, timeEntries, rangeStart, today]);
+  }, [locationEmployees, timeEntries, rangeStart, rangeEnd]);
 
   // Time Off
   const timeOffData = useMemo(() => {
@@ -79,10 +86,7 @@ export default function Reports() {
   }, [locationEmployees, absences]);
 
   // Sales by day
-  const salesByDay = useMemo(() => {
-    return laborByDay.map((d) => ({ ...d }));
-  }, [laborByDay]);
-
+  const salesByDay = useMemo(() => laborByDay.map((d) => ({ ...d })), [laborByDay]);
   const maxDailySales = Math.max(...salesByDay.map((d) => d.sales), 1);
 
   return (
@@ -92,12 +96,9 @@ export default function Reports() {
           <h1 className="page-title">Reports</h1>
           <p className="page-subtitle">{currentLocation?.name}</p>
         </div>
-        <select className="form-input" style={{ width: 140 }} value={range} onChange={(e) => setRange(Number(e.target.value))}>
-          <option value={7}>Last 7 days</option>
-          <option value={14}>Last 14 days</option>
-          <option value={30}>Last 30 days</option>
-        </select>
       </div>
+
+      <TimeframeSelector value={timeframe} onChange={setTimeframe} />
 
       <div className="reports-tabs">
         {TABS.map((tab) => (
@@ -184,7 +185,7 @@ export default function Reports() {
         <div>
           <div className="report-summary">
             <div className="report-stat"><span className="report-stat__value">${totalSales.toLocaleString()}</span><span className="report-stat__label">Total Sales</span></div>
-            <div className="report-stat"><span className="report-stat__value">${range > 0 ? Math.round(totalSales / (range + 1)).toLocaleString() : 0}</span><span className="report-stat__label">Daily Avg</span></div>
+            <div className="report-stat"><span className="report-stat__value">${rangeDays > 0 ? Math.round(totalSales / rangeDays).toLocaleString() : 0}</span><span className="report-stat__label">Daily Avg</span></div>
           </div>
           <div className="card">
             <div className="card__header"><h2 className="card__title"><BarChart3 size={18} /> Daily Sales</h2></div>

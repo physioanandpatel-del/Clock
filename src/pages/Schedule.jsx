@@ -808,7 +808,19 @@ export default function Schedule() {
       <div className="schedule-grid-wrapper">
         <div className="schedule-grid">
           <div className="schedule-grid__header">
-            <div className="schedule-grid__employee-col">Employee</div>
+            <div className="schedule-grid__employee-col">
+              {draftCount > 0 && (
+                <label className="schedule-grid__select-all" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCount === draftCount && draftCount > 0}
+                    onChange={() => selectedCount === draftCount ? clearSelection() : selectAllDrafts()}
+                    title="Select all draft shifts"
+                  />
+                </label>
+              )}
+              Employee
+            </div>
             {weekDays.map((day, i) => (
               <div
                 key={i}
