@@ -23,6 +23,10 @@ import OpenShifts from './pages/OpenShifts'
 import VacationCalendar from './pages/VacationCalendar'
 import AuditLog from './pages/AuditLog'
 import Documents from './pages/Documents'
+import Subcontractors from './pages/Subcontractors'
+import Paystubs from './pages/Paystubs'
+import SalesReports from './pages/SalesReports'
+import ProviderTags from './pages/ProviderTags'
 import './App.css'
 
 function ProtectedRoute({ minAccess, children }) {
@@ -62,6 +66,10 @@ function App() {
             <Route path="/billing" element={<ProtectedRoute minAccess="location_admin"><Billing /></ProtectedRoute>} />
             <Route path="/subscriptions" element={<ProtectedRoute minAccess="location_admin"><Subscriptions /></ProtectedRoute>} />
             <Route path="/documents" element={<ProtectedRoute minAccess="manager"><Documents /></ProtectedRoute>} />
+            <Route path="/subcontractors" element={<ProtectedRoute minAccess="manager"><Subcontractors /></ProtectedRoute>} />
+            <Route path="/paystubs" element={<ProtectedRoute minAccess="location_admin"><Paystubs /></ProtectedRoute>} />
+            <Route path="/sales-reports" element={<ProtectedRoute minAccess="manager"><SalesReports /></ProtectedRoute>} />
+            <Route path="/provider-tags" element={<ProtectedRoute minAccess="manager"><ProviderTags /></ProtectedRoute>} />
             <Route path="/audit-log" element={<ProtectedRoute minAccess="master_admin"><AuditLog /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute minAccess="master_admin"><Settings /></ProtectedRoute>} />
           </Routes>

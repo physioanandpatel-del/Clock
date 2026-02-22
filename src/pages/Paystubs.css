@@ -1,0 +1,110 @@
+.paystubs-page { max-width: 1000px; }
+
+.paystub-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.paystub-summary-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; background: var(--bg-white);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  color: var(--primary);
+}
+.paystub-summary-card--alert { color: var(--danger); }
+.paystub-summary-card__value { font-size: 20px; font-weight: 700; color: inherit; }
+.paystub-summary-card__label { font-size: 12px; color: var(--text-secondary); }
+
+.paystub-filter-bar {
+  display: flex; gap: 4px; margin-bottom: 16px;
+}
+.paystub-filter {
+  padding: 6px 16px; border: 1px solid var(--border); border-radius: 20px;
+  background: var(--bg-white); font-size: 13px; font-weight: 500;
+  color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.paystub-filter--active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.paystub-filter__badge {
+  background: #fff; color: var(--danger); font-size: 10px;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700;
+}
+
+.paystub-list { display: flex; flex-direction: column; gap: 8px; }
+.paystub-card {
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.paystub-card--unmatched { border-color: var(--warning); background: #fffbeb; }
+
+.paystub-card__main {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px; cursor: pointer;
+}
+.paystub-card__main:hover { background: var(--bg); }
+.paystub-card__avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+.paystub-card__info { flex: 1; min-width: 0; }
+.paystub-card__name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.paystub-card__confidence { font-size: 11px; color: var(--text-secondary); font-weight: 400; }
+.paystub-card__period { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.paystub-card__amounts { display: flex; gap: 20px; flex-shrink: 0; }
+.paystub-card__amount { text-align: center; }
+.paystub-card__amount-value { display: block; font-size: 14px; font-weight: 700; color: var(--text); }
+.paystub-card__amount-label { font-size: 11px; color: var(--text-secondary); }
+
+.paystub-card__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--text-secondary); }
+
+.paystub-card__expanded { border-top: 1px solid var(--border); padding: 12px 20px; }
+.paystub-detail-row {
+  display: flex; justify-content: space-between; padding: 4px 0;
+  font-size: 13px; color: var(--text-secondary);
+}
+.paystub-detail-row span:last-child { font-weight: 500; color: var(--text); }
+
+.paystub-ytd {
+  margin-top: 12px; padding: 12px; background: var(--bg);
+  border-radius: var(--radius); border: 1px solid var(--border);
+}
+.paystub-ytd h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+.paystub-ytd__stats { display: flex; gap: 20px; }
+.paystub-ytd__stats > div { text-align: center; }
+.paystub-ytd__stats strong { display: block; font-size: 15px; color: var(--text); }
+.paystub-ytd__stats span { font-size: 11px; color: var(--text-secondary); }
+
+.paystub-card__delete { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+.badge--warning { background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+
+/* Bulk Upload Table */
+.bulk-upload-table { overflow-x: auto; }
+.bulk-upload-header {
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr 0.8fr 0.8fr 0.8fr 40px;
+  gap: 8px; padding: 8px 0; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); border-bottom: 1px solid var(--border);
+}
+.bulk-upload-row {
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr 0.8fr 0.8fr 0.8fr 40px;
+  gap: 8px; padding: 6px 0;
+}
+.bulk-upload-row .form-input { font-size: 13px; padding: 6px 8px; }
+
+/* Match Employee List */
+.match-employee-list { display: flex; flex-direction: column; gap: 4px; }
+.match-employee-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--bg-white);
+  cursor: pointer; width: 100%; text-align: left; font-size: 14px;
+}
+.match-employee-item:hover { background: var(--bg); border-color: var(--primary); }
+.match-employee-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 600; flex-shrink: 0;
+}
+.match-employee-info { flex: 1; }
+.match-employee-name { display: block; font-weight: 600; color: var(--text); }
+.match-employee-role { font-size: 12px; color: var(--text-secondary); }

@@ -5,7 +5,7 @@ import { generateId } from '../utils/helpers';
 const AppContext = createContext(null);
 
 const STORAGE_KEY = 'clock-app-data';
-const DATA_VERSION = 7; // Increment when sample data changes significantly
+const DATA_VERSION = 8; // Increment when sample data changes significantly
 
 // Access level hierarchy (higher index = more access)
 export const ACCESS_LEVELS = ['employee', 'manager', 'location_admin', 'master_admin'];
@@ -124,6 +124,19 @@ function loadState() {
       }));
       // Migrate timesheets: add managerNotes field
       data.timesheets = (data.timesheets || []).map((t) => ({ ...t, managerNotes: t.managerNotes || '' }));
+      // Subcontractor, paystub, provider-assistant tag migrations
+      if (!data.subcontractors) data.subcontractors = [];
+      if (!data.subcontractorRevenue) data.subcontractorRevenue = [];
+      if (!data.subcontractorPayments) data.subcontractorPayments = [];
+      if (!data.paystubs) data.paystubs = [];
+      if (!data.providerAssistantTags) data.providerAssistantTags = [];
+      // Break config on locations
+      data.locations = data.locations.map((l) => ({
+        ...l,
+        breakConfig: l.breakConfig || { defaultBreakMinutes: 30, roleDefaults: {} },
+      }));
+      // Shift breakMinutes migration
+      data.shifts = data.shifts.map((s) => ({ ...s, breakMinutes: s.breakMinutes ?? 0 }));
       return { ...data, _version: DATA_VERSION };
     }
   } catch (e) {
@@ -525,6 +538,70 @@ function reducer(state, action) {
     // Update customer features
     case 'UPDATE_CUSTOMER_FEATURES':
       return { ...state, customers: (state.customers || []).map((c) => c.id === action.payload.id ? { ...c, features: { ...(c.features || {}), ...action.payload.features } } : c) };
+
+    // Subcontractors
+    case 'ADD_SUBCONTRACTOR': {
+      const sub = { ...action.payload, id: generateId() };
+      return { ...state, subcontractors: [...(state.subcontractors || []), sub] };
+    }
+    case 'UPDATE_SUBCONTRACTOR':
+      return { ...state, subcontractors: (state.subcontractors || []).map((s) => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
+    case 'DELETE_SUBCONTRACTOR':
+      return {
+        ...state,
+        subcontractors: (state.subcontractors || []).filter((s) => s.id !== action.payload),
+        subcontractorRevenue: (state.subcontractorRevenue || []).filter((r) => r.subcontractorId !== action.payload),
+        subcontractorPayments: (state.subcontractorPayments || []).filter((p) => p.subcontractorId !== action.payload),
+        providerAssistantTags: (state.providerAssistantTags || []).filter((t) => t.providerId !== action.payload),
+      };
+
+    // Subcontractor Revenue
+    case 'ADD_SUBCONTRACTOR_REVENUE': {
+      const rev = { ...action.payload, id: generateId() };
+      return { ...state, subcontractorRevenue: [...(state.subcontractorRevenue || []), rev] };
+    }
+    case 'UPDATE_SUBCONTRACTOR_REVENUE':
+      return { ...state, subcontractorRevenue: (state.subcontractorRevenue || []).map((r) => r.id === action.payload.id ? { ...r, ...action.payload } : r) };
+    case 'DELETE_SUBCONTRACTOR_REVENUE':
+      return { ...state, subcontractorRevenue: (state.subcontractorRevenue || []).filter((r) => r.id !== action.payload) };
+    case 'BULK_ADD_SUBCONTRACTOR_REVENUE': {
+      const entries = action.payload.map((e) => ({ ...e, id: generateId() }));
+      return { ...state, subcontractorRevenue: [...(state.subcontractorRevenue || []), ...entries] };
+    }
+
+    // Subcontractor Payments
+    case 'ADD_SUBCONTRACTOR_PAYMENT': {
+      const pay = { ...action.payload, id: generateId() };
+      return { ...state, subcontractorPayments: [...(state.subcontractorPayments || []), pay] };
+    }
+    case 'UPDATE_SUBCONTRACTOR_PAYMENT':
+      return { ...state, subcontractorPayments: (state.subcontractorPayments || []).map((p) => p.id === action.payload.id ? { ...p, ...action.payload } : p) };
+    case 'DELETE_SUBCONTRACTOR_PAYMENT':
+      return { ...state, subcontractorPayments: (state.subcontractorPayments || []).filter((p) => p.id !== action.payload) };
+
+    // Paystubs
+    case 'ADD_PAYSTUB': {
+      const ps = { ...action.payload, id: generateId() };
+      return { ...state, paystubs: [...(state.paystubs || []), ps] };
+    }
+    case 'BULK_ADD_PAYSTUBS': {
+      const stubs = action.payload.map((p) => ({ ...p, id: generateId() }));
+      return { ...state, paystubs: [...(state.paystubs || []), ...stubs] };
+    }
+    case 'UPDATE_PAYSTUB':
+      return { ...state, paystubs: (state.paystubs || []).map((p) => p.id === action.payload.id ? { ...p, ...action.payload } : p) };
+    case 'DELETE_PAYSTUB':
+      return { ...state, paystubs: (state.paystubs || []).filter((p) => p.id !== action.payload) };
+
+    // Provider-Assistant Tags
+    case 'ADD_PROVIDER_TAG': {
+      const tag = { ...action.payload, id: generateId() };
+      return { ...state, providerAssistantTags: [...(state.providerAssistantTags || []), tag] };
+    }
+    case 'UPDATE_PROVIDER_TAG':
+      return { ...state, providerAssistantTags: (state.providerAssistantTags || []).map((t) => t.id === action.payload.id ? { ...t, ...action.payload } : t) };
+    case 'DELETE_PROVIDER_TAG':
+      return { ...state, providerAssistantTags: (state.providerAssistantTags || []).filter((t) => t.id !== action.payload) };
 
     case 'RESET_DATA':
       return { ...generateSampleData(), _version: DATA_VERSION };

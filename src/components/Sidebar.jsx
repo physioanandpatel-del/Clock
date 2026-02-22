@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3, Building2, FileText, CreditCard, Mail, ClipboardCheck, HandMetal, CalendarDays, Shield, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3, Building2, FileText, CreditCard, Mail, ClipboardCheck, HandMetal, CalendarDays, Shield, FolderOpen, UserCheck, Receipt, Activity, Link2 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp, hasAccess, ACCESS_LABELS } from '../context/AppContext';
 import { getInitials } from '../utils/helpers';
@@ -29,6 +29,11 @@ const navItems = [
   { to: '/billing', icon: FileText, label: 'Billing', minAccess: 'location_admin' },
   { to: '/subscriptions', icon: CreditCard, label: 'Subscriptions', minAccess: 'location_admin' },
   { to: '/documents', icon: FolderOpen, label: 'Documents', minAccess: 'manager' },
+  { type: 'divider', minAccess: 'manager' },
+  { to: '/subcontractors', icon: UserCheck, label: 'Subcontractors', minAccess: 'manager' },
+  { to: '/paystubs', icon: Receipt, label: 'Paystubs', minAccess: 'location_admin' },
+  { to: '/sales-reports', icon: Activity, label: 'EMR Reports', minAccess: 'manager' },
+  { to: '/provider-tags', icon: Link2, label: 'Provider Tags', minAccess: 'manager' },
   { type: 'divider', minAccess: 'master_admin' },
   { to: '/audit-log', icon: Shield, label: 'Audit Log', minAccess: 'master_admin' },
   { to: '/settings', icon: Settings, label: 'Settings', minAccess: 'master_admin' },

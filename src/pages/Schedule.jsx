@@ -65,6 +65,7 @@ export default function Schedule() {
     position: '',
     notes: '',
     taskTemplateIds: [],
+    breakMinutes: 0,
   });
 
   const locationTemplates = useMemo(() => (taskTemplates || []).filter((t) => t.locationId === currentLocationId), [taskTemplates, currentLocationId]);
@@ -131,14 +132,25 @@ export default function Schedule() {
   const draftCount = draftShifts.length;
   const publishedCount = weekShifts.filter((s) => s.status === 'published').length;
 
-  // Weekly labor calculation
+  // Break config from location
+  const breakConfig = currentLocation?.breakConfig || { defaultBreakMinutes: 0, roleDefaults: {} };
+
+  // Get default break for a position
+  function getDefaultBreak(position) {
+    if (breakConfig.roleDefaults && breakConfig.roleDefaults[position]) return breakConfig.roleDefaults[position];
+    return breakConfig.defaultBreakMinutes || 0;
+  }
+
+  // Weekly labor calculation (deducts break time)
   const weeklyLaborData = useMemo(() => {
     let totalCost = 0;
     let totalHours = 0;
     weekShifts.forEach((s) => {
       const emp = locationEmployees.find((e) => e.id === s.employeeId);
       if (emp) {
-        const hrs = differenceInHours(parseISO(s.end), parseISO(s.start));
+        const rawHrs = differenceInHours(parseISO(s.end), parseISO(s.start));
+        const breakHrs = (s.breakMinutes || 0) / 60;
+        const hrs = Math.max(0, rawHrs - breakHrs);
         totalHours += hrs;
         totalCost += hrs * getEffectiveRate(emp, s.position);
       }
@@ -249,14 +261,16 @@ export default function Schedule() {
     const day = weekDays[dayIndex];
     setEditingShift(null);
     setLaborWarning(null);
+    const pos = (locationEmployees.find((e) => e.id === employeeId)?.roles || [locationEmployees.find((e) => e.id === employeeId)?.role])[0] || positions[0] || '';
     setFormData({
       employeeId: employeeId || locationEmployees[0]?.id || '',
       date: format(day, 'yyyy-MM-dd'),
       startTime: '09:00',
       endTime: '17:00',
-      position: (locationEmployees.find((e) => e.id === employeeId)?.roles || [locationEmployees.find((e) => e.id === employeeId)?.role])[0] || positions[0] || '',
+      position: pos,
       notes: '',
       taskTemplateIds: [],
+      breakMinutes: getDefaultBreak(pos),
     });
     setShowModal(true);
   }
@@ -274,6 +288,7 @@ export default function Schedule() {
       position: shift.position,
       notes: shift.notes || '',
       taskTemplateIds: shift.taskTemplateIds || [],
+      breakMinutes: shift.breakMinutes ?? getDefaultBreak(shift.position),
     });
     setShowModal(true);
   }
@@ -306,6 +321,7 @@ export default function Schedule() {
       position: formData.position,
       notes: formData.notes,
       taskTemplateIds: formData.taskTemplateIds || [],
+      breakMinutes: Number(formData.breakMinutes) || 0,
     };
 
     if (editingShift) {
@@ -571,7 +587,10 @@ export default function Schedule() {
   }, [shifts, currentUserId, weekDays]);
 
   const myWeekHours = useMemo(() => {
-    return myWeekShifts.reduce((sum, s) => sum + differenceInHours(parseISO(s.end), parseISO(s.start)), 0);
+    return myWeekShifts.reduce((sum, s) => {
+      const raw = differenceInHours(parseISO(s.end), parseISO(s.start));
+      return sum + Math.max(0, raw - ((s.breakMinutes || 0) / 60));
+    }, 0);
   }, [myWeekShifts]);
 
   // ===== EMPLOYEE VIEW =====
@@ -808,14 +827,16 @@ export default function Schedule() {
             onClick={() => {
               setEditingShift(null);
               setLaborWarning(null);
+              const pos = positions[0] || '';
               setFormData({
                 employeeId: locationEmployees[0]?.id || '',
                 date: format(new Date(), 'yyyy-MM-dd'),
                 startTime: '09:00',
                 endTime: '17:00',
-                position: positions[0] || '',
+                position: pos,
                 notes: '',
                 taskTemplateIds: [],
+                breakMinutes: getDefaultBreak(pos),
               });
               setShowModal(true);
             }}
@@ -1033,7 +1054,7 @@ export default function Schedule() {
                             <span className="schedule-shift__time">
                               {formatTime(s.start)} - {formatTime(s.end)}
                             </span>
-                            <span className="schedule-shift__pos">{s.position}</span>
+                            <span className="schedule-shift__pos">{s.position}{s.breakMinutes > 0 ? ` (${s.breakMinutes}m break)` : ''}</span>
                             {(s.taskTemplateIds || []).length > 0 && (
                               <span className="schedule-shift__tasks" title={`${s.taskTemplateIds.length} task template(s) assigned`}>
                                 {s.taskTemplateIds.length} task{s.taskTemplateIds.length !== 1 ? 's' : ''}
@@ -1345,21 +1366,42 @@ export default function Schedule() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Position</label>
-                  <select
-                    className="form-input"
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    required
-                  >
-                    <option value="">Select position</option>
-                    {positions.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Position</label>
+                    <select
+                      className="form-input"
+                      value={formData.position}
+                      onChange={(e) => {
+                        const pos = e.target.value;
+                        setFormData({ ...formData, position: pos, breakMinutes: getDefaultBreak(pos) });
+                      }}
+                      required
+                    >
+                      <option value="">Select position</option>
+                      {positions.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Break (min)</label>
+                    <select
+                      className="form-input"
+                      value={formData.breakMinutes}
+                      onChange={(e) => setFormData({ ...formData, breakMinutes: Number(e.target.value) })}
+                    >
+                      <option value="0">No break</option>
+                      <option value="15">15 min</option>
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">60 min</option>
+                      <option value="90">90 min</option>
+                    </select>
+                    <p className="form-hint">Deducted from payable hours</p>
+                  </div>
                 </div>
 
                 <div className="form-group">

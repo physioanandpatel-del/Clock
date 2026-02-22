@@ -1,0 +1,84 @@
+.sales-reports-page { max-width: 1100px; }
+
+.page-header__actions { display: flex; align-items: center; gap: 12px; }
+
+.sr-range-selector { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.sr-range-btn {
+  padding: 6px 14px; border: none; background: var(--bg-white);
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  cursor: pointer; border-right: 1px solid var(--border);
+}
+.sr-range-btn:last-child { border-right: none; }
+.sr-range-btn--active { background: var(--primary); color: #fff; }
+
+.sr-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.sr-summary-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; background: var(--bg-white);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  color: var(--primary);
+}
+.sr-summary-card--success { color: var(--success); }
+.sr-summary-card__value { font-size: 20px; font-weight: 700; color: inherit; }
+.sr-summary-card__label { font-size: 12px; color: var(--text-secondary); }
+
+.sr-table-wrap {
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow-x: auto; margin-bottom: 20px;
+}
+.sr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sr-table th {
+  text-align: left; padding: 12px 16px; font-weight: 600;
+  color: var(--text-secondary); border-bottom: 2px solid var(--border);
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.sr-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.sr-table tbody tr:hover { background: var(--bg); }
+.sr-table tfoot td { border-top: 2px solid var(--border); background: var(--bg); font-size: 14px; }
+
+.sr-provider-cell { display: flex; align-items: center; gap: 10px; }
+.sr-provider-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 600; flex-shrink: 0;
+}
+.sr-provider-name { font-weight: 600; color: var(--text); }
+.sr-provider-type { font-size: 11px; color: var(--text-secondary); }
+
+.sr-td-amount { text-align: right; font-variant-numeric: tabular-nums; }
+.sr-td-center { text-align: center; }
+.sr-td--positive { color: var(--success); font-weight: 600; }
+.sr-td--negative { color: var(--danger); font-weight: 600; }
+.sr-td--warning { color: var(--warning); font-weight: 600; }
+
+/* Revenue Bars */
+.sr-bars-section {
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+}
+.sr-bars-title { font-size: 14px; font-weight: 600; margin: 0 0 16px; color: var(--text); }
+.sr-bars { display: flex; flex-direction: column; gap: 8px; }
+.sr-bar-row { display: flex; align-items: center; gap: 12px; }
+.sr-bar-label { width: 140px; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.sr-bar-track { flex: 1; height: 24px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.sr-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; min-width: 2px; }
+.sr-bar-value { width: 50px; text-align: right; font-size: 13px; font-weight: 600; color: var(--text); flex-shrink: 0; }
+
+/* EMR Upload */
+.emr-upload-table { overflow-x: auto; }
+.emr-upload-header {
+  display: grid; grid-template-columns: 1.5fr 1fr 0.8fr 0.6fr 1fr 40px;
+  gap: 8px; padding: 8px 0; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); border-bottom: 1px solid var(--border);
+}
+.emr-upload-row {
+  display: grid; grid-template-columns: 1.5fr 1fr 0.8fr 0.6fr 1fr 40px;
+  gap: 8px; padding: 6px 0; align-items: start;
+}
+.emr-upload-row .form-input { font-size: 13px; padding: 6px 8px; }
+.emr-upload-cell { display: flex; flex-direction: column; gap: 2px; }
+.emr-match-badge { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 4px; }
+.emr-match-badge--ok { background: #dcfce7; color: #166534; }
+.emr-match-badge--no { background: #fef2f2; color: #991b1b; }
