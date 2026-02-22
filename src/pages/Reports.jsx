@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BarChart3 } from 'lucide-react';
 import { format, parseISO, isWithinInterval, differenceInDays, addDays } from 'date-fns';
-import { getHoursWorked, getInitials } from '../utils/helpers';
+import { getHoursWorked, getInitials, getEffectiveRate } from '../utils/helpers';
 import TimeframeSelector, { calculateRange } from '../components/TimeframeSelector';
 import './Reports.css';
 
@@ -38,7 +38,7 @@ export default function Reports() {
       let cost = 0, hours = 0;
       dayShifts.forEach((s) => {
         const emp = locationEmployees.find((e) => e.id === s.employeeId);
-        if (emp) { const h = getHoursWorked(s.start, s.end); hours += h; cost += h * emp.hourlyRate; }
+        if (emp) { const h = getHoursWorked(s.start, s.end); hours += h; cost += h * getEffectiveRate(emp, s.position); }
       });
       const sales = salesEntries.filter((s) => s.locationId === currentLocationId && s.date === dateStr).reduce((sum, s) => sum + s.amount, 0);
       days.push({ date: dateStr, label: rangeDays <= 14 ? format(date, 'EEE') : format(date, 'M/d'), cost, hours, sales });

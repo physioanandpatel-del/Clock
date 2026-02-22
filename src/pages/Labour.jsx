@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TrendingUp, Plus, X, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, DollarSign, BarChart3, Target, Calendar, Eye, Edit2, Trash2, Zap } from 'lucide-react';
 import { format, subDays, parseISO, isWithinInterval, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, differenceInDays } from 'date-fns';
-import { getHoursWorked, getInitials } from '../utils/helpers';
+import { getHoursWorked, getInitials, getEffectiveRate } from '../utils/helpers';
 import TimeframeSelector, { calculateRange } from '../components/TimeframeSelector';
 import './Labour.css';
 
@@ -49,11 +49,12 @@ export default function Labour() {
       const emp = locationEmployees.find((e) => e.id === s.employeeId);
       if (emp) {
         const hrs = getHoursWorked(s.start, s.end);
+        const rate = getEffectiveRate(emp, s.position);
         totalHours += hrs;
-        totalCost += hrs * emp.hourlyRate;
-        if (!byEmployee[emp.id]) byEmployee[emp.id] = { hours: 0, cost: 0, name: emp.preferredName || emp.name, rate: emp.hourlyRate };
+        totalCost += hrs * rate;
+        if (!byEmployee[emp.id]) byEmployee[emp.id] = { hours: 0, cost: 0, name: emp.preferredName || emp.name, rate };
         byEmployee[emp.id].hours += hrs;
-        byEmployee[emp.id].cost += hrs * emp.hourlyRate;
+        byEmployee[emp.id].cost += hrs * rate;
       }
     });
     return { totalCost, totalHours, shiftCount: weekShifts.length, byEmployee };
@@ -111,7 +112,7 @@ export default function Labour() {
       let labor = 0;
       wShifts.forEach((s) => {
         const emp = locationEmployees.find((e) => e.id === s.employeeId);
-        if (emp) labor += getHoursWorked(s.start, s.end) * emp.hourlyRate;
+        if (emp) labor += getHoursWorked(s.start, s.end) * getEffectiveRate(emp, s.position);
       });
       const sales = actual || projected;
       const pct = sales > 0 ? (labor / sales) * 100 : 0;
