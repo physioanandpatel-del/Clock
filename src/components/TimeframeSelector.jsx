@@ -6,12 +6,12 @@ import './TimeframeSelector.css';
 const PRESETS = [
   { key: 'daily', label: 'Daily' },
   { key: 'weekly', label: 'Weekly' },
-  { key: 'biweekly', label: 'Bi-weekly' },
-  { key: 'semimonthly', label: 'Semi-monthly' },
+  { key: 'biweekly', label: 'Bi-Weekly' },
+  { key: 'semimonthly', label: 'Semi-Monthly' },
   { key: 'monthly', label: 'Monthly' },
   { key: 'quarterly', label: 'Quarterly' },
   { key: 'annually', label: 'Annually' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'custom', label: 'Custom Range' },
 ];
 
 function getQuarterStart(date) {
@@ -99,7 +99,8 @@ export default function TimeframeSelector({ value, onChange }) {
   const { preset, startDate, endDate } = value;
   const [refDate, setRefDate] = useState(new Date());
 
-  const handlePresetChange = useCallback((newPreset) => {
+  const handlePresetChange = useCallback((e) => {
+    const newPreset = e.target.value;
     if (newPreset === 'custom') {
       onChange({ preset: 'custom', startDate: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd') });
       return;
@@ -116,42 +117,64 @@ export default function TimeframeSelector({ value, onChange }) {
     onChange({ preset, startDate: format(range.start, 'yyyy-MM-dd'), endDate: format(range.end, 'yyyy-MM-dd') });
   }, [preset, refDate, onChange]);
 
-  const handleCustomDate = useCallback((field, val) => {
-    onChange({ ...value, [field]: val });
-  }, [value, onChange]);
+  const handleDateChange = useCallback((field, val) => {
+    if (preset !== 'custom') {
+      // Switching to custom when calendar dates are manually changed
+      onChange({ preset: 'custom', startDate: field === 'startDate' ? val : startDate, endDate: field === 'endDate' ? val : endDate });
+    } else {
+      onChange({ ...value, [field]: val });
+    }
+  }, [value, preset, startDate, endDate, onChange]);
 
   const label = useMemo(() => formatRangeLabel(startDate, endDate, preset), [startDate, endDate, preset]);
 
   return (
     <div className="timeframe-selector">
-      <div className="timeframe-selector__presets">
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            className={`timeframe-selector__preset ${preset === p.key ? 'timeframe-selector__preset--active' : ''}`}
-            onClick={() => handlePresetChange(p.key)}
+      <div className="timeframe-selector__controls">
+        {/* Dropdown */}
+        <div className="timeframe-selector__dropdown-wrap">
+          <Calendar size={16} className="timeframe-selector__dropdown-icon" />
+          <select
+            className="timeframe-selector__dropdown"
+            value={preset}
+            onChange={handlePresetChange}
           >
-            {p.label}
-          </button>
-        ))}
-      </div>
-      <div className="timeframe-selector__range">
+            {PRESETS.map((p) => (
+              <option key={p.key} value={p.key}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Nav arrows + label (for non-custom) */}
         {preset !== 'custom' && (
-          <button className="timeframe-selector__nav" onClick={() => handleNav('prev')}><ChevronLeft size={16} /></button>
-        )}
-        {preset === 'custom' ? (
-          <div className="timeframe-selector__custom">
-            <Calendar size={14} />
-            <input type="date" className="timeframe-selector__date-input" value={startDate} onChange={(e) => handleCustomDate('startDate', e.target.value)} />
-            <span>to</span>
-            <input type="date" className="timeframe-selector__date-input" value={endDate} onChange={(e) => handleCustomDate('endDate', e.target.value)} />
+          <div className="timeframe-selector__nav-group">
+            <button className="timeframe-selector__nav" onClick={() => handleNav('prev')}><ChevronLeft size={16} /></button>
+            <span className="timeframe-selector__label">{label}</span>
+            <button className="timeframe-selector__nav" onClick={() => handleNav('next')}><ChevronRight size={16} /></button>
           </div>
-        ) : (
-          <span className="timeframe-selector__label">{label}</span>
         )}
-        {preset !== 'custom' && (
-          <button className="timeframe-selector__nav" onClick={() => handleNav('next')}><ChevronRight size={16} /></button>
-        )}
+
+        {/* Calendar date pickers - always visible */}
+        <div className="timeframe-selector__dates">
+          <div className="timeframe-selector__date-field">
+            <label className="timeframe-selector__date-label">From</label>
+            <input
+              type="date"
+              className="timeframe-selector__date-input"
+              value={startDate}
+              onChange={(e) => handleDateChange('startDate', e.target.value)}
+            />
+          </div>
+          <div className="timeframe-selector__date-field">
+            <label className="timeframe-selector__date-label">To</label>
+            <input
+              type="date"
+              className="timeframe-selector__date-input"
+              value={endDate}
+              onChange={(e) => handleDateChange('endDate', e.target.value)}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
