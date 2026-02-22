@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, X, RotateCcw } from 'lucide-react';
+import { Plus, X, RotateCcw, Sliders, MapPin, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import './Settings.css';
 
 export default function Settings() {
   const { state, dispatch } = useApp();
-  const { positions } = state;
+  const { positions, systemSettings } = state;
+  const settings = systemSettings || { defaultMultiLocation: false, defaultMaxLocations: 1, defaultMaxEmployees: 10 };
   const [newPosition, setNewPosition] = useState('');
 
   function handleAddPosition(e) {
@@ -22,6 +23,19 @@ export default function Settings() {
     }
   }
 
+  function updateSetting(key, value) {
+    const updates = { [key]: value };
+    // If disabling multi-location, reset max locations
+    if (key === 'defaultMultiLocation' && !value) {
+      updates.defaultMaxLocations = 1;
+    }
+    if (key === 'defaultMultiLocation' && value && settings.defaultMaxLocations <= 1) {
+      updates.defaultMaxLocations = 3;
+    }
+    dispatch({ type: 'UPDATE_SYSTEM_SETTINGS', payload: updates });
+    dispatch({ type: 'ADD_AUDIT_LOG', payload: { action: 'settings_change', entityType: 'settings', entityId: '', details: `System setting "${key}" changed to ${value}`, userId: state.currentUserId } });
+  }
+
   return (
     <div className="settings-page">
       <div className="page-header">
@@ -31,6 +45,77 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Feature Defaults */}
+      <div className="settings-section">
+        <div className="card">
+          <div className="card__header">
+            <h2 className="card__title"><Sliders size={18} /> Feature Defaults for New Customers</h2>
+          </div>
+          <div className="card__body">
+            <p className="settings-desc">
+              Control the default feature settings applied when creating new customer subscriptions. You can override these per-customer in the Subscriptions page.
+            </p>
+
+            <div className="settings-feature-list">
+              <div className="settings-feature-row">
+                <div className="settings-feature-info">
+                  <MapPin size={16} />
+                  <div>
+                    <div className="settings-feature-label">Multi-Location (Default)</div>
+                    <div className="settings-feature-desc">Allow new customers to have multiple locations by default</div>
+                  </div>
+                </div>
+                <button
+                  className={`feature-toggle ${settings.defaultMultiLocation ? 'feature-toggle--on' : ''}`}
+                  onClick={() => updateSetting('defaultMultiLocation', !settings.defaultMultiLocation)}
+                >
+                  {settings.defaultMultiLocation ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                  <span>{settings.defaultMultiLocation ? 'On' : 'Off'}</span>
+                </button>
+              </div>
+
+              <div className={`settings-feature-row ${!settings.defaultMultiLocation ? 'settings-feature-row--disabled' : ''}`}>
+                <div className="settings-feature-info">
+                  <MapPin size={16} />
+                  <div>
+                    <div className="settings-feature-label">Default Max Locations</div>
+                    <div className="settings-feature-desc">Maximum locations for new customers when multi-location is enabled</div>
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  className="settings-feature-input"
+                  min={1}
+                  max={999}
+                  value={settings.defaultMaxLocations}
+                  disabled={!settings.defaultMultiLocation}
+                  onChange={(e) => updateSetting('defaultMaxLocations', Math.max(1, Math.min(999, parseInt(e.target.value) || 1)))}
+                />
+              </div>
+
+              <div className="settings-feature-row">
+                <div className="settings-feature-info">
+                  <Users size={16} />
+                  <div>
+                    <div className="settings-feature-label">Default Max Employees</div>
+                    <div className="settings-feature-desc">Maximum employee count for new customers</div>
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  className="settings-feature-input"
+                  min={1}
+                  max={999}
+                  value={settings.defaultMaxEmployees}
+                  onChange={(e) => updateSetting('defaultMaxEmployees', Math.max(1, Math.min(999, parseInt(e.target.value) || 1)))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Positions */}
       <div className="settings-section">
         <div className="card">
           <div className="card__header">
@@ -63,6 +148,7 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Data Management */}
       <div className="settings-section">
         <div className="card">
           <div className="card__header">
@@ -79,6 +165,7 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* About */}
       <div className="settings-section">
         <div className="card">
           <div className="card__header">

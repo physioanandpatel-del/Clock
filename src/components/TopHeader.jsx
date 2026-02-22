@@ -25,6 +25,10 @@ const PAGE_TITLES = {
   '/billing': 'Billing & Invoicing',
   '/subscriptions': 'Subscriptions',
   '/documents': 'Documents',
+  '/subcontractors': 'Subcontractors',
+  '/paystubs': 'Paystubs',
+  '/sales-reports': 'EMR Sales Reports',
+  '/provider-tags': 'Provider-Assistant Tags',
   '/audit-log': 'Audit Log',
   '/settings': 'Settings',
 };

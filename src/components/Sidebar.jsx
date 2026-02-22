@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3, Building2, FileText, CreditCard, Mail, ClipboardCheck, HandMetal, CalendarDays, Shield, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Clock, Settings, Menu, X, MapPin, CalendarOff, DollarSign, TrendingUp, MessageSquare, ListTodo, BarChart3, Building2, FileText, CreditCard, Mail, ClipboardCheck, HandMetal, CalendarDays, Shield, FolderOpen, UserCheck, Receipt, Activity, Link2 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp, hasAccess, ACCESS_LABELS } from '../context/AppContext';
 import { getInitials } from '../utils/helpers';
@@ -29,6 +29,11 @@ const navItems = [
   { to: '/billing', icon: FileText, label: 'Billing', minAccess: 'location_admin' },
   { to: '/subscriptions', icon: CreditCard, label: 'Subscriptions', minAccess: 'location_admin' },
   { to: '/documents', icon: FolderOpen, label: 'Documents', minAccess: 'manager' },
+  { type: 'divider', minAccess: 'manager' },
+  { to: '/subcontractors', icon: UserCheck, label: 'Subcontractors', minAccess: 'manager' },
+  { to: '/paystubs', icon: Receipt, label: 'Paystubs', minAccess: 'location_admin' },
+  { to: '/sales-reports', icon: Activity, label: 'EMR Reports', minAccess: 'manager' },
+  { to: '/provider-tags', icon: Link2, label: 'Provider Tags', minAccess: 'manager' },
   { type: 'divider', minAccess: 'master_admin' },
   { to: '/audit-log', icon: Shield, label: 'Audit Log', minAccess: 'master_admin' },
   { to: '/settings', icon: Settings, label: 'Settings', minAccess: 'master_admin' },
@@ -37,12 +42,18 @@ const navItems = [
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { state, dispatch } = useApp();
-  const { locations, currentLocationId, employees, currentUserId } = state;
+  const { locations, currentLocationId, employees, currentUserId, systemSettings } = state;
   const currentLocation = locations.find((l) => l.id === currentLocationId);
   const currentUser = employees.find((e) => e.id === currentUserId);
   const userAccess = currentUser?.accessLevel || 'employee';
+  const multiLocationEnabled = systemSettings?.defaultMultiLocation !== false && locations.length > 1;
 
-  const visibleNav = navItems.filter((item) => hasAccess(userAccess, item.minAccess));
+  const visibleNav = navItems.filter((item) => {
+    if (!hasAccess(userAccess, item.minAccess)) return false;
+    // Hide Locations nav if multi-location is disabled
+    if (item.to === '/locations' && !multiLocationEnabled) return false;
+    return true;
+  });
 
   return (
     <>
@@ -56,7 +67,7 @@ export default function Sidebar() {
           <span className="sidebar__title">Clock</span>
         </div>
 
-        {locations.length > 1 && (
+        {multiLocationEnabled && (
           <div className="sidebar__location-switch">
             <select
               className="sidebar__location-select"
@@ -70,7 +81,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {locations.length === 1 && currentLocation && (
+        {!multiLocationEnabled && currentLocation && (
           <div className="sidebar__location-label">
             <MapPin size={14} />
             <span>{currentLocation.name}</span>

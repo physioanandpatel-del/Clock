@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { Clock, LogIn, LogOut, Search, MapPin, AlertTriangle, CheckCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { Clock, LogIn, LogOut, Search, MapPin, AlertTriangle, CheckCircle, Settings, X } from 'lucide-react';
+import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { getInitials, formatTime, formatDuration } from '../utils/helpers';
+import { hasAccess } from '../context/AppContext';
 import './TimeClock.css';
 
 function getDistance(lat1, lng1, lat2, lng2) {
@@ -16,15 +17,21 @@ function getDistance(lat1, lng1, lat2, lng2) {
 
 export default function TimeClock() {
   const { state, dispatch } = useApp();
-  const { employees, timeEntries, currentLocationId, locations } = state;
+  const { employees, timeEntries, shifts, currentLocationId, locations, currentUserId } = state;
   const locationEmployees = employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId));
   const currentLocation = locations.find((l) => l.id === currentLocationId);
+  const currentUser = employees.find((e) => e.id === currentUserId);
+  const isManager = hasAccess(currentUser?.accessLevel || 'employee', 'manager');
+
+  const clockRules = currentLocation?.clockRules || { earlyClockInBuffer: 15, lateClockOutBuffer: 15, restrictEarlyClockIn: false, autoClockOut: false, autoClockOutBuffer: 30 };
 
   const [search, setSearch] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [userPosition, setUserPosition] = useState(null);
   const [geoError, setGeoError] = useState(null);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [showClockRules, setShowClockRules] = useState(false);
+  const [clockInError, setClockInError] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -56,17 +63,77 @@ export default function TimeClock() {
     return dist <= currentLocation.geofenceRadius;
   }, [hasGeofence, userPosition, currentLocation]);
 
+  // Auto clock-out: check active entries for auto clock-out
+  useEffect(() => {
+    if (!clockRules.autoClockOut) return;
+    const now = new Date();
+    const empIds = locationEmployees.map((e) => e.id);
+    const activeEntries = timeEntries.filter((t) => t.status === 'active' && empIds.includes(t.employeeId));
+
+    activeEntries.forEach((entry) => {
+      const emp = locationEmployees.find((e) => e.id === entry.employeeId);
+      if (!emp) return;
+      // Find the employee's scheduled shift for today
+      const todayShifts = shifts.filter((s) => s.employeeId === entry.employeeId && isSameDay(parseISO(s.start), now));
+      if (todayShifts.length === 0) return;
+      // Use the last shift end time
+      const lastShift = todayShifts.sort((a, b) => new Date(b.end) - new Date(a.end))[0];
+      const shiftEnd = parseISO(lastShift.end);
+      const minutesPastEnd = differenceInMinutes(now, shiftEnd);
+      if (minutesPastEnd >= clockRules.autoClockOutBuffer) {
+        dispatch({ type: 'CLOCK_OUT', payload: entry.id });
+      }
+    });
+  }, [currentTime, clockRules, timeEntries, shifts, locationEmployees, dispatch]);
+
+  // Check clock-in eligibility for an employee
+  function getClockInStatus(empId) {
+    if (!clockRules.restrictEarlyClockIn) return { allowed: true };
+    const now = new Date();
+    const todayShifts = shifts.filter((s) => s.employeeId === empId && isSameDay(parseISO(s.start), now));
+    if (todayShifts.length === 0) return { allowed: true, note: 'No shift scheduled' };
+
+    // Find the next upcoming shift
+    const upcomingShifts = todayShifts.filter((s) => parseISO(s.start) > now).sort((a, b) => new Date(a.start) - new Date(b.start));
+    // Or currently active shift
+    const activeShift = todayShifts.find((s) => parseISO(s.start) <= now && parseISO(s.end) > now);
+
+    if (activeShift) return { allowed: true, note: 'Shift in progress' };
+
+    if (upcomingShifts.length > 0) {
+      const nextShift = upcomingShifts[0];
+      const minutesBefore = differenceInMinutes(parseISO(nextShift.start), now);
+      if (minutesBefore > clockRules.earlyClockInBuffer) {
+        return {
+          allowed: false,
+          note: `Too early. Shift starts at ${formatTime(nextShift.start)}. Can clock in ${clockRules.earlyClockInBuffer} min before.`,
+        };
+      }
+      return { allowed: true, note: `Shift starts at ${formatTime(nextShift.start)}` };
+    }
+
+    // All shifts have ended
+    return { allowed: true, note: 'All shifts ended' };
+  }
+
   const employeesWithStatus = useMemo(() => {
     return locationEmployees
       .map((emp) => {
         const activeEntry = timeEntries.find((t) => t.employeeId === emp.id && t.status === 'active');
         const todayEntries = timeEntries.filter((t) => t.employeeId === emp.id && t.status === 'completed' && new Date(t.clockIn).toDateString() === new Date().toDateString());
-        return { ...emp, activeEntry, todayEntries, isClockedIn: !!activeEntry };
+        const clockInStatus = getClockInStatus(emp.id);
+        return { ...emp, activeEntry, todayEntries, isClockedIn: !!activeEntry, clockInStatus };
       })
       .filter((emp) => !search || emp.name.toLowerCase().includes(search.toLowerCase()));
-  }, [locationEmployees, timeEntries, search]);
+  }, [locationEmployees, timeEntries, search, shifts, clockRules]);
 
   function handleClockIn(employeeId) {
+    const status = getClockInStatus(employeeId);
+    if (!status.allowed) {
+      setClockInError(status.note);
+      setTimeout(() => setClockInError(null), 4000);
+      return;
+    }
     let geofenceStatus = 'unknown';
     if (hasGeofence) {
       geofenceStatus = isInsideGeofence === true ? 'inside' : isInsideGeofence === false ? 'outside' : 'unknown';
@@ -78,6 +145,13 @@ export default function TimeClock() {
     dispatch({ type: 'CLOCK_OUT', payload: entryId });
   }
 
+  function updateClockRules(updates) {
+    dispatch({
+      type: 'UPDATE_LOCATION',
+      payload: { id: currentLocationId, clockRules: { ...clockRules, ...updates } },
+    });
+  }
+
   const activeCount = employeesWithStatus.filter((e) => e.isClockedIn).length;
 
   return (
@@ -87,6 +161,11 @@ export default function TimeClock() {
           <h1 className="page-title">Time Clock</h1>
           <p className="page-subtitle">{format(currentTime, 'EEEE, MMMM d, yyyy')}</p>
         </div>
+        {isManager && (
+          <button className="btn btn--secondary" onClick={() => setShowClockRules(true)}>
+            <Settings size={16} /> Clock Rules
+          </button>
+        )}
       </div>
 
       <div className="timeclock-display">
@@ -97,6 +176,25 @@ export default function TimeClock() {
           <span className="badge badge--blue">{locationEmployees.length - activeCount} off</span>
         </div>
       </div>
+
+      {/* Clock-in error toast */}
+      {clockInError && (
+        <div className="clock-error-toast">
+          <AlertTriangle size={14} /> {clockInError}
+        </div>
+      )}
+
+      {/* Clock Rules Summary Bar */}
+      {(clockRules.restrictEarlyClockIn || clockRules.autoClockOut) && (
+        <div className="clock-rules-bar">
+          {clockRules.restrictEarlyClockIn && (
+            <span className="clock-rule-badge">Early clock-in: {clockRules.earlyClockInBuffer}min buffer</span>
+          )}
+          {clockRules.autoClockOut && (
+            <span className="clock-rule-badge">Auto clock-out: {clockRules.autoClockOutBuffer}min after shift</span>
+          )}
+        </div>
+      )}
 
       {/* Geofence Status */}
       {hasGeofence && (
@@ -147,12 +245,24 @@ export default function TimeClock() {
                     {emp.activeEntry.geofenceStatus === 'inside' && <span className="geofence-ok"> (verified)</span>}
                   </div>
                 )}
+                {!emp.isClockedIn && emp.clockInStatus.note && clockRules.restrictEarlyClockIn && (
+                  <div className={`timeclock-card__clock-note ${!emp.clockInStatus.allowed ? 'timeclock-card__clock-note--blocked' : ''}`}>
+                    {emp.clockInStatus.note}
+                  </div>
+                )}
               </div>
               <div className="timeclock-card__action">
                 {emp.isClockedIn ? (
                   <button className="clock-btn clock-btn--out" onClick={() => handleClockOut(emp.activeEntry.id)}><LogOut size={18} /> Clock Out</button>
                 ) : (
-                  <button className="clock-btn clock-btn--in" onClick={() => handleClockIn(emp.id)}><LogIn size={18} /> Clock In</button>
+                  <button
+                    className={`clock-btn clock-btn--in ${!emp.clockInStatus.allowed ? 'clock-btn--disabled' : ''}`}
+                    onClick={() => handleClockIn(emp.id)}
+                    disabled={!emp.clockInStatus.allowed}
+                    title={!emp.clockInStatus.allowed ? emp.clockInStatus.note : 'Clock In'}
+                  >
+                    <LogIn size={18} /> Clock In
+                  </button>
                 )}
               </div>
             </div>
@@ -170,6 +280,67 @@ export default function TimeClock() {
           </div>
         ))}
       </div>
+
+      {/* Clock Rules Settings Modal */}
+      {showClockRules && (
+        <div className="modal-overlay" onClick={() => setShowClockRules(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title"><Settings size={18} /> Clock Rules</h2>
+              <button className="btn btn--icon" onClick={() => setShowClockRules(false)}><X size={18} /></button>
+            </div>
+            <div className="modal__body">
+              <p className="form-hint" style={{ margin: 0 }}>
+                Configure clock-in/out rules for <strong>{currentLocation?.name}</strong>.
+              </p>
+
+              <div className="clock-rule-setting">
+                <label className="clock-rule-toggle">
+                  <input type="checkbox" checked={clockRules.restrictEarlyClockIn} onChange={(e) => updateClockRules({ restrictEarlyClockIn: e.target.checked })} />
+                  <span>Restrict early clock-in</span>
+                </label>
+                <p className="form-hint">Prevent employees from clocking in before their scheduled shift.</p>
+                {clockRules.restrictEarlyClockIn && (
+                  <div className="clock-rule-input">
+                    <label>Allow clock-in</label>
+                    <input type="number" className="form-input" min={0} max={120} value={clockRules.earlyClockInBuffer} onChange={(e) => updateClockRules({ earlyClockInBuffer: Math.max(0, parseInt(e.target.value) || 0) })} />
+                    <span>minutes before shift</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="clock-rule-setting">
+                <label className="clock-rule-toggle">
+                  <input type="checkbox" checked={clockRules.autoClockOut} onChange={(e) => updateClockRules({ autoClockOut: e.target.checked })} />
+                  <span>Auto clock-out</span>
+                </label>
+                <p className="form-hint">Automatically clock out employees after their shift ends + buffer.</p>
+                {clockRules.autoClockOut && (
+                  <div className="clock-rule-input">
+                    <label>Auto clock-out after</label>
+                    <input type="number" className="form-input" min={5} max={240} value={clockRules.autoClockOutBuffer} onChange={(e) => updateClockRules({ autoClockOutBuffer: Math.max(5, parseInt(e.target.value) || 30) })} />
+                    <span>minutes past shift end</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="clock-rule-setting">
+                <div className="clock-rule-input">
+                  <label>Late clock-out buffer</label>
+                  <input type="number" className="form-input" min={0} max={120} value={clockRules.lateClockOutBuffer} onChange={(e) => updateClockRules({ lateClockOutBuffer: Math.max(0, parseInt(e.target.value) || 0) })} />
+                  <span>minutes (for timesheet flagging)</span>
+                </div>
+                <p className="form-hint">Clock-outs more than this buffer past shift end will be flagged in timesheets.</p>
+              </div>
+            </div>
+            <div className="modal__footer">
+              <div className="modal__footer-right">
+                <button className="btn btn--secondary" onClick={() => setShowClockRules(false)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

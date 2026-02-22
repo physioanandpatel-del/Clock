@@ -7,8 +7,34 @@ export function generateSampleData() {
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
 
   const locations = [
-    { id: 'loc1', name: 'Downtown', address: '123 Main St', phone: '555-1000', targetLaborPercent: 30, laborBudgetWarning: 30, laborBudgetMax: 35, lat: 43.6532, lng: -79.3832, geofenceRadius: 200 },
-    { id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, laborBudgetWarning: 28, laborBudgetMax: 33, lat: 43.6745, lng: -79.3882, geofenceRadius: 150 },
+    {
+      id: 'loc1', name: 'Downtown', address: '123 Main St', phone: '555-1000', targetLaborPercent: 30, laborBudgetWarning: 30, laborBudgetMax: 35, lat: 43.6532, lng: -79.3832, geofenceRadius: 200,
+      breakConfig: { defaultBreakMinutes: 30, roleDefaults: { Cook: 45, Server: 30, Bartender: 30, Manager: 60 } },
+      clockRules: { earlyClockInBuffer: 15, lateClockOutBuffer: 15, restrictEarlyClockIn: false, autoClockOut: true, autoClockOutBuffer: 30 },
+      requiredPositions: [
+        { id: 'rp1', dayOfWeek: 1, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp2', dayOfWeek: 1, position: 'Server', startTime: '11:00', endTime: '19:00' },
+        { id: 'rp3', dayOfWeek: 1, position: 'Cook', startTime: '07:00', endTime: '15:00' },
+        { id: 'rp4', dayOfWeek: 2, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp5', dayOfWeek: 2, position: 'Server', startTime: '11:00', endTime: '19:00' },
+        { id: 'rp6', dayOfWeek: 2, position: 'Cook', startTime: '07:00', endTime: '15:00' },
+        { id: 'rp7', dayOfWeek: 3, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp8', dayOfWeek: 3, position: 'Server', startTime: '11:00', endTime: '19:00' },
+        { id: 'rp9', dayOfWeek: 4, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp10', dayOfWeek: 4, position: 'Server', startTime: '11:00', endTime: '23:00' },
+        { id: 'rp11', dayOfWeek: 4, position: 'Bartender', startTime: '15:00', endTime: '23:00' },
+        { id: 'rp12', dayOfWeek: 5, position: 'Manager', startTime: '09:00', endTime: '17:00' },
+        { id: 'rp13', dayOfWeek: 5, position: 'Server', startTime: '11:00', endTime: '23:00' },
+        { id: 'rp14', dayOfWeek: 5, position: 'Bartender', startTime: '15:00', endTime: '01:00' },
+        { id: 'rp15', dayOfWeek: 5, position: 'Cook', startTime: '07:00', endTime: '23:00' },
+      ],
+    },
+    {
+      id: 'loc2', name: 'Uptown', address: '456 Oak Ave', phone: '555-2000', targetLaborPercent: 28, laborBudgetWarning: 28, laborBudgetMax: 33, lat: 43.6745, lng: -79.3882, geofenceRadius: 150,
+      breakConfig: { defaultBreakMinutes: 30, roleDefaults: { Cook: 45, Server: 30 } },
+      clockRules: { earlyClockInBuffer: 10, lateClockOutBuffer: 10, restrictEarlyClockIn: false, autoClockOut: false, autoClockOutBuffer: 30 },
+      requiredPositions: [],
+    },
   ];
 
   const accessLevels = ['master_admin', 'location_admin', 'manager', 'employee'];
@@ -485,13 +511,20 @@ export function generateSampleData() {
     { id: 'sr4', surveyId: 'sv1', employeeId: '10', sentDate: '2024-07-01', completedDate: '2024-07-02', status: 'completed', answers: [{ questionId: 'q1', value: 5 }, { questionId: 'q2', value: 5 }, { questionId: 'q3', value: 4 }, { questionId: 'q4', value: 'Training kitchen was great, very supportive team' }] },
   ];
 
+  // System Settings
+  const systemSettings = {
+    defaultMultiLocation: false,
+    defaultMaxLocations: 1,
+    defaultMaxEmployees: 10,
+  };
+
   // Customers
   const customers = [
-    { id: 'cust1', name: 'Maple Leaf Catering Co.', email: 'info@mapleleafcatering.ca', phone: '416-555-3001', company: 'Maple Leaf Catering', address: '55 Front St W', city: 'Toronto', province: 'ON', postalCode: 'M5J 1E6', status: 'active', plan: 'professional', notes: 'Long-term client. Weekly catering orders for office lunches.', createdDate: '2024-01-15' },
-    { id: 'cust2', name: 'Riverdale Events Inc.', email: 'events@riverdale.ca', phone: '416-555-3002', company: 'Riverdale Events', address: '100 Broadview Ave', city: 'Toronto', province: 'ON', postalCode: 'M4M 3H3', status: 'active', plan: 'enterprise', notes: 'Handles large-scale events. VIP account. Net-30 payment terms.', createdDate: '2023-11-01' },
-    { id: 'cust3', name: 'Parkdale Bistro Group', email: 'orders@parkdalebistro.ca', phone: '416-555-3003', company: 'Parkdale Bistro', address: '1400 Queen St W', city: 'Toronto', province: 'ON', postalCode: 'M6K 1L4', status: 'active', plan: 'basic', notes: 'Small bistro group. Monthly orders.', createdDate: '2024-06-10' },
-    { id: 'cust4', name: 'Northern Hospitality Ltd.', email: 'ap@northernhospitality.ca', phone: '416-555-3004', company: 'Northern Hospitality', address: '200 Bay St', city: 'Toronto', province: 'ON', postalCode: 'M5J 2J5', status: 'active', plan: 'professional', notes: 'Hotel chain. Multiple locations.', createdDate: '2024-03-20' },
-    { id: 'cust5', name: 'West End Pub', email: 'manager@westendpub.ca', phone: '416-555-3005', company: 'West End Pub', address: '850 Bloor St W', city: 'Toronto', province: 'ON', postalCode: 'M6G 1M2', status: 'inactive', plan: 'basic', notes: 'Paused service. May resume in spring.', createdDate: '2024-02-01' },
+    { id: 'cust1', name: 'Maple Leaf Catering Co.', email: 'info@mapleleafcatering.ca', phone: '416-555-3001', company: 'Maple Leaf Catering', address: '55 Front St W', city: 'Toronto', province: 'ON', postalCode: 'M5J 1E6', status: 'active', plan: 'professional', notes: 'Long-term client. Weekly catering orders for office lunches.', createdDate: '2024-01-15', features: { multiLocation: true, maxLocations: 3, maxEmployees: 50, geofencing: true, payrollIntegration: true, apiAccess: false, customBranding: false } },
+    { id: 'cust2', name: 'Riverdale Events Inc.', email: 'events@riverdale.ca', phone: '416-555-3002', company: 'Riverdale Events', address: '100 Broadview Ave', city: 'Toronto', province: 'ON', postalCode: 'M4M 3H3', status: 'active', plan: 'enterprise', notes: 'Handles large-scale events. VIP account. Net-30 payment terms.', createdDate: '2023-11-01', features: { multiLocation: true, maxLocations: 999, maxEmployees: 999, geofencing: true, payrollIntegration: true, apiAccess: true, customBranding: true } },
+    { id: 'cust3', name: 'Parkdale Bistro Group', email: 'orders@parkdalebistro.ca', phone: '416-555-3003', company: 'Parkdale Bistro', address: '1400 Queen St W', city: 'Toronto', province: 'ON', postalCode: 'M6K 1L4', status: 'active', plan: 'basic', notes: 'Small bistro group. Single location.', createdDate: '2024-06-10', features: { multiLocation: false, maxLocations: 1, maxEmployees: 10, geofencing: false, payrollIntegration: false, apiAccess: false, customBranding: false } },
+    { id: 'cust4', name: 'Northern Hospitality Ltd.', email: 'ap@northernhospitality.ca', phone: '416-555-3004', company: 'Northern Hospitality', address: '200 Bay St', city: 'Toronto', province: 'ON', postalCode: 'M5J 2J5', status: 'active', plan: 'professional', notes: 'Hotel chain. Multiple locations.', createdDate: '2024-03-20', features: { multiLocation: true, maxLocations: 3, maxEmployees: 50, geofencing: true, payrollIntegration: true, apiAccess: false, customBranding: false } },
+    { id: 'cust5', name: 'West End Pub', email: 'manager@westendpub.ca', phone: '416-555-3005', company: 'West End Pub', address: '850 Bloor St W', city: 'Toronto', province: 'ON', postalCode: 'M6G 1M2', status: 'inactive', plan: 'basic', notes: 'Paused service. May resume in spring.', createdDate: '2024-02-01', features: { multiLocation: false, maxLocations: 1, maxEmployees: 10, geofencing: false, payrollIntegration: false, apiAccess: false, customBranding: false } },
   ];
 
   // Invoices
@@ -528,6 +561,93 @@ export function generateSampleData() {
   // Open Shift Bids
   const openShiftBids = [];
 
+  // Subcontractors
+  const subcontractors = [
+    {
+      id: 'sub1', name: 'Dr. Raj Patel', email: 'raj@physioclinic.ca', phone: '416-555-4001', color: '#7c3aed',
+      locationIds: ['loc1'], commissionType: 'percentage', commissionRate: 60,
+      specialties: ['Physiotherapy', 'Sports Rehab'],
+      documents: [
+        { id: 'sd1', name: 'Service Agreement', type: 'contract', uploadDate: '2024-01-15', expiryDate: '2025-12-31', status: 'valid' },
+        { id: 'sd2', name: 'Professional Liability Insurance', type: 'insurance', uploadDate: '2024-01-15', expiryDate: '2025-06-30', status: 'valid' },
+        { id: 'sd3', name: 'College License (HCPC)', type: 'license', uploadDate: '2024-01-15', expiryDate: '2026-03-31', status: 'valid' },
+        { id: 'sd4', name: 'T4A Tax Form', type: 'tax', uploadDate: '2025-02-01', expiryDate: null, status: 'valid' },
+      ],
+      timeTrackingEnabled: false, status: 'active',
+      notes: 'Senior physiotherapist. 60/40 revenue split. Works Mon-Fri mornings.',
+    },
+    {
+      id: 'sub2', name: 'Dr. Anika Sharma', email: 'anika@wellnesspt.ca', phone: '416-555-4002', color: '#059669',
+      locationIds: ['loc1', 'loc2'], commissionType: 'percentage', commissionRate: 55,
+      specialties: ['Massage Therapy', 'Acupuncture'],
+      documents: [
+        { id: 'sd5', name: 'Service Agreement', type: 'contract', uploadDate: '2024-03-01', expiryDate: '2025-12-31', status: 'valid' },
+        { id: 'sd6', name: 'Professional Liability Insurance', type: 'insurance', uploadDate: '2024-03-01', expiryDate: '2025-09-30', status: 'valid' },
+        { id: 'sd7', name: 'RMT License', type: 'license', uploadDate: '2024-03-01', expiryDate: '2025-12-31', status: 'valid' },
+      ],
+      timeTrackingEnabled: true, status: 'active',
+      notes: 'Registered Massage Therapist. 55/45 split. Available both locations.',
+    },
+    {
+      id: 'sub3', name: 'Dr. Marcus Johnson', email: 'marcus@chiropractix.ca', phone: '416-555-4003', color: '#dc2626',
+      locationIds: ['loc2'], commissionType: 'fixed', commissionRate: 75,
+      specialties: ['Chiropractic', 'Rehabilitation'],
+      documents: [
+        { id: 'sd8', name: 'Service Agreement', type: 'contract', uploadDate: '2024-06-15', expiryDate: '2025-06-15', status: 'valid' },
+        { id: 'sd9', name: 'Professional License', type: 'license', uploadDate: '2024-06-15', expiryDate: '2025-12-31', status: 'valid' },
+      ],
+      timeTrackingEnabled: false, status: 'active',
+      notes: 'Chiropractor. Fixed $75 per visit. Works Tue/Thu afternoons.',
+    },
+  ];
+
+  // Subcontractor Revenue entries
+  const subcontractorRevenue = [];
+  let subRevId = 1;
+  for (let d = 60; d >= 0; d--) {
+    const date = format(subDays(today, d), 'yyyy-MM-dd');
+    const dayOfWeek = subDays(today, d).getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
+    // Dr. Raj - daily revenue
+    if (Math.random() > 0.2) {
+      const visits = Math.floor(Math.random() * 4) + 3;
+      subcontractorRevenue.push({ id: `srev${subRevId++}`, subcontractorId: 'sub1', date, amount: visits * 90, visits, description: 'Physiotherapy sessions' });
+    }
+    // Dr. Anika - 3-4 days per week
+    if (Math.random() > 0.4) {
+      const visits = Math.floor(Math.random() * 5) + 2;
+      subcontractorRevenue.push({ id: `srev${subRevId++}`, subcontractorId: 'sub2', date, amount: visits * 80, visits, description: 'Massage therapy' });
+    }
+    // Dr. Marcus - Tue/Thu only
+    if (dayOfWeek === 2 || dayOfWeek === 4) {
+      const visits = Math.floor(Math.random() * 3) + 2;
+      subcontractorRevenue.push({ id: `srev${subRevId++}`, subcontractorId: 'sub3', date, amount: visits * 85, visits, description: 'Chiropractic adjustments' });
+    }
+  }
+
+  // Subcontractor Payments
+  const subcontractorPayments = [
+    { id: 'spay1', subcontractorId: 'sub1', date: format(subDays(today, 30), 'yyyy-MM-dd'), amount: 4860, period: 'Previous Month', notes: 'Monthly commission payment' },
+    { id: 'spay2', subcontractorId: 'sub2', date: format(subDays(today, 30), 'yyyy-MM-dd'), amount: 2640, period: 'Previous Month', notes: 'Monthly commission payment' },
+    { id: 'spay3', subcontractorId: 'sub3', date: format(subDays(today, 30), 'yyyy-MM-dd'), amount: 1200, period: 'Previous Month', notes: 'Monthly per-visit payment' },
+  ];
+
+  // Paystubs
+  const paystubs = [
+    { id: 'ps1', employeeId: '2', periodStart: format(subDays(today, 28), 'yyyy-MM-dd'), periodEnd: format(subDays(today, 14), 'yyyy-MM-dd'), grossPay: 1440, netPay: 1152, deductions: 288, uploadDate: format(subDays(today, 10), 'yyyy-MM-dd'), status: 'matched', matchConfidence: 98 },
+    { id: 'ps2', employeeId: '3', periodStart: format(subDays(today, 28), 'yyyy-MM-dd'), periodEnd: format(subDays(today, 14), 'yyyy-MM-dd'), grossPay: 864, netPay: 691, deductions: 173, uploadDate: format(subDays(today, 10), 'yyyy-MM-dd'), status: 'matched', matchConfidence: 95 },
+    { id: 'ps3', employeeId: '4', periodStart: format(subDays(today, 28), 'yyyy-MM-dd'), periodEnd: format(subDays(today, 14), 'yyyy-MM-dd'), grossPay: 1760, netPay: 1408, deductions: 352, uploadDate: format(subDays(today, 10), 'yyyy-MM-dd'), status: 'matched', matchConfidence: 100 },
+    { id: 'ps4', employeeId: null, periodStart: format(subDays(today, 28), 'yyyy-MM-dd'), periodEnd: format(subDays(today, 14), 'yyyy-MM-dd'), grossPay: 1280, netPay: 1024, deductions: 256, uploadDate: format(subDays(today, 10), 'yyyy-MM-dd'), status: 'unmatched', matchConfidence: 0, rawName: 'S. Tremblay' },
+    { id: 'ps5', employeeId: '9', periodStart: format(subDays(today, 14), 'yyyy-MM-dd'), periodEnd: format(today, 'yyyy-MM-dd'), grossPay: 1088, netPay: 870, deductions: 218, uploadDate: format(today, 'yyyy-MM-dd'), status: 'matched', matchConfidence: 92 },
+  ];
+
+  // Provider-Assistant Tags
+  const providerAssistantTags = [
+    { id: 'pat1', providerId: 'sub1', assistantId: '9', startDate: '2025-01-01', endDate: '2025-06-30', notes: 'Morning physio sessions assistant' },
+    { id: 'pat2', providerId: 'sub2', assistantId: '3', startDate: '2025-01-15', endDate: '2025-12-31', notes: 'Massage therapy room prep and support' },
+    { id: 'pat3', providerId: 'sub1', assistantId: '2', startDate: '2025-02-01', endDate: '2025-04-30', notes: 'Afternoon rehab coverage' },
+  ];
+
   // Audit Log
   const auditLog = [
     { id: 'al1', action: 'employee_add', entityType: 'employee', entityId: '12', details: 'Kevin Patel added as Dishwasher', userId: '1', timestamp: subDays(today, 30).toISOString() },
@@ -540,5 +660,5 @@ export function generateSampleData() {
     { id: 'al8', action: 'settings_change', entityType: 'settings', entityId: '', details: 'Payroll period changed to biweekly', userId: '1', timestamp: subDays(today, 20).toISOString() },
   ];
 
-  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses, customers, invoices, conversations, timesheets, openShiftBids, auditLog };
+  return { locations, currentLocationId: 'loc1', currentUserId: '1', accessLevels, employees, shifts, positions, groups, timeEntries, absences, salesEntries, payrollSettings, posts, tasks, taskTemplates, shiftSwaps, trainingPrograms, trainingAssignments, surveyTemplates, surveyResponses, customers, invoices, conversations, timesheets, openShiftBids, auditLog, systemSettings, subcontractors, subcontractorRevenue, subcontractorPayments, paystubs, providerAssistantTags };
 }
