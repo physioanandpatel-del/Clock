@@ -1,50 +1,49 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval, parseISO, setDate, lastDayOfMonth } from 'date-fns';
+import { DollarSign } from 'lucide-react';
+import { format, isWithinInterval, parseISO, differenceInDays } from 'date-fns';
 import { getInitials, getHoursWorked } from '../utils/helpers';
+import TimeframeSelector, { calculateRange } from '../components/TimeframeSelector';
 import './Payroll.css';
 
-export default function Payroll() {
-  const { state, dispatch } = useApp();
-  const { employees, shifts, payrollSettings, currentLocationId } = state;
+function initTimeframe() {
+  const range = calculateRange('weekly');
+  return { preset: 'weekly', startDate: format(range.start, 'yyyy-MM-dd'), endDate: format(range.end, 'yyyy-MM-dd') };
+}
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+export default function Payroll() {
+  const { state } = useApp();
+  const { employees, shifts, currentLocationId } = state;
+
+  const [timeframe, setTimeframe] = useState(initTimeframe);
 
   const locationEmployees = useMemo(() => employees.filter((e) => (e.locationIds || [e.locationId]).includes(currentLocationId)), [employees, currentLocationId]);
   const locationEmpIds = useMemo(() => new Set(locationEmployees.map((e) => e.id)), [locationEmployees]);
 
-  const period = payrollSettings.period;
-
-  const periodRange = useMemo(() => {
-    if (period === 'weekly') {
-      const start = startOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay });
-      return { start, end: endOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay }) };
-    } else if (period === 'biweekly') {
-      const ws = startOfWeek(currentDate, { weekStartsOn: payrollSettings.startDay });
-      return { start: ws, end: addDays(ws, 13) };
-    } else if (period === 'semimonthly') {
-      const day = currentDate.getDate();
-      const monthStart = startOfMonth(currentDate);
-      if (day <= 15) {
-        return { start: monthStart, end: setDate(monthStart, 15) };
-      } else {
-        return { start: setDate(monthStart, 16), end: lastDayOfMonth(monthStart) };
-      }
-    } else {
-      return { start: startOfMonth(currentDate), end: endOfMonth(currentDate) };
-    }
-  }, [currentDate, period, payrollSettings.startDay]);
+  const rangeStart = parseISO(timeframe.startDate);
+  const rangeEnd = parseISO(timeframe.endDate);
 
   const periodShifts = useMemo(() => {
     return shifts.filter((s) => {
       if (!locationEmpIds.has(s.employeeId)) return false;
       const d = parseISO(s.start);
-      return isWithinInterval(d, { start: periodRange.start, end: periodRange.end });
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
     });
-  }, [shifts, locationEmpIds, periodRange]);
+  }, [shifts, locationEmpIds, rangeStart, rangeEnd]);
 
-  const overtimeThreshold = period === 'biweekly' ? 80 : period === 'monthly' ? 160 : period === 'semimonthly' ? 80 : 40;
+  const overtimeThreshold = useMemo(() => {
+    const preset = timeframe.preset;
+    if (preset === 'daily') return 8;
+    if (preset === 'weekly') return 40;
+    if (preset === 'biweekly') return 80;
+    if (preset === 'semimonthly') return 80;
+    if (preset === 'monthly') return 160;
+    if (preset === 'quarterly') return 480;
+    if (preset === 'annually') return 2080;
+    // custom: pro-rate based on days
+    const days = Math.max(1, differenceInDays(rangeEnd, rangeStart) + 1);
+    return Math.round((days / 7) * 40);
+  }, [timeframe.preset, rangeStart, rangeEnd]);
 
   const employeePayroll = useMemo(() => {
     return locationEmployees.map((emp) => {
@@ -65,27 +64,6 @@ export default function Payroll() {
     return { hours, pay };
   }, [employeePayroll]);
 
-  function navigate(dir) {
-    if (period === 'weekly') setCurrentDate((d) => dir > 0 ? addWeeks(d, 1) : subWeeks(d, 1));
-    else if (period === 'biweekly') setCurrentDate((d) => dir > 0 ? addWeeks(d, 2) : subWeeks(d, 2));
-    else if (period === 'semimonthly') {
-      setCurrentDate((d) => {
-        const day = d.getDate();
-        if (dir > 0) {
-          return day <= 15 ? setDate(d, 16) : setDate(addMonths(d, 1), 1);
-        } else {
-          return day > 15 ? setDate(d, 1) : setDate(subMonths(d, 1), 16);
-        }
-      });
-    } else {
-      setCurrentDate((d) => dir > 0 ? addMonths(d, 1) : subMonths(d, 1));
-    }
-  }
-
-  function handlePeriodChange(e) {
-    dispatch({ type: 'UPDATE_PAYROLL_SETTINGS', payload: { period: e.target.value } });
-  }
-
   return (
     <div className="payroll-page">
       <div className="page-header">
@@ -93,24 +71,9 @@ export default function Payroll() {
           <h1 className="page-title">Payroll</h1>
           <p className="page-subtitle">Review payroll by period</p>
         </div>
-        <div className="payroll-period-select">
-          <label className="form-label">Pay Period</label>
-          <select className="form-input" value={period} onChange={handlePeriodChange}>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Bi-Weekly</option>
-            <option value="semimonthly">Semi-Monthly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
       </div>
 
-      <div className="payroll-nav">
-        <button className="btn btn--icon" onClick={() => navigate(-1)}><ChevronLeft size={18} /></button>
-        <span className="payroll-nav__label">
-          {format(periodRange.start, 'MMM d, yyyy')} - {format(periodRange.end, 'MMM d, yyyy')}
-        </span>
-        <button className="btn btn--icon" onClick={() => navigate(1)}><ChevronRight size={18} /></button>
-      </div>
+      <TimeframeSelector value={timeframe} onChange={setTimeframe} />
 
       <div className="payroll-summary-cards">
         <div className="stat-card">
