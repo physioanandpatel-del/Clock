@@ -192,16 +192,22 @@ export default function Dashboard() {
   const targetPercent = currentLocation?.targetLaborPercent || 30;
   const isOverTarget = stats.laborPercent > targetPercent + 2;
 
+  const locationBar = (
+    <div className="dash-location-bar">
+      <MapPin size={14} />
+      <span>{currentLocation?.name}</span>
+      <span className="dash-location-bar__sep">&middot;</span>
+      <span>{format(today, 'EEEE, MMMM d, yyyy')}</span>
+      <span className="dash-location-bar__sep">&middot;</span>
+      <span style={{ fontWeight: 500 }}>{currentUser?.name} ({ACCESS_LABELS[userAccess]})</span>
+    </div>
+  );
+
   // ===== EMPLOYEE DASHBOARD =====
   if (!isManager) {
     return (
-      <div className="dashboard">
-        <div className="dash-location-bar">
-          <MapPin size={14} />
-          <span>{currentLocation?.name}</span>
-          <span className="dash-location-bar__sep">&middot;</span>
-          <span>{format(today, 'EEEE, MMMM d, yyyy')}</span>
-        </div>
+      <div className="dashboard" key={`emp-${currentUserId}`}>
+        {locationBar}
 
         {/* Employee greeting */}
         <div className="dash-greeting">
@@ -440,13 +446,8 @@ export default function Dashboard() {
 
   // ===== MANAGER/OWNER DASHBOARD =====
   return (
-    <div className="dashboard">
-      <div className="dash-location-bar">
-        <MapPin size={14} />
-        <span>{currentLocation?.name}</span>
-        <span className="dash-location-bar__sep">&middot;</span>
-        <span>{format(today, 'EEEE, MMMM d, yyyy')}</span>
-      </div>
+    <div className="dashboard" key={`mgr-${currentUserId}`}>
+      {locationBar}
 
       <div className="stats-grid">
         <div className="stat-card">
